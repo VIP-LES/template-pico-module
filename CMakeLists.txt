@@ -23,21 +23,32 @@ if (EXISTS ${picoVscode})
     include(${picoVscode})
 endif()
 # ====================================================================================
-set(PICO_BOARD pico2)
+set(PICO_BOARD pimoroni_pico_plus2_rp2350 CACHE STRING "Board type")
+
+# add CMake directory in path
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 # Pull in Raspberry Pi Pico SDK (must be before project)
-include(pico_sdk_import.cmake)
+include(pico_sdk_import)
+
+# ====================================================================================
 
 project(module-name C CXX ASM)
 
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
-# Add executable. Default name is the project name, version 0.1
+# Initialize the MCP251XFD library
+set(CONF_MCP251XFD_DIR ${CMAKE_CURRENT_SOURCE_DIR}/conf)
+include(MCP251XFD)
 
+
+# Add executable. Default name is the project name, version 0.1
 add_executable(MODULENAME 
         src/main.c
+        src/can.c
 )
+
 
 pico_set_program_name(MODULENAME "Please please please change me!!! (and MODULENAME in CMakeLists.txt)")
 pico_set_program_version(MODULENAME "0.1")
@@ -46,21 +57,24 @@ pico_set_program_version(MODULENAME "0.1")
 pico_enable_stdio_uart(MODULENAME 0)
 pico_enable_stdio_usb(MODULENAME 1)
 
-# Add the standard library to the build
+# Add required template libraries
 target_link_libraries(MODULENAME
-        pico_stdlib)
+        pico_stdlib
+        hardware_spi
+        MCP251XFD
+)
 
 # Add the standard include files to the build
-target_include_directories(MODULENAME PRIVATE
-        ${CMAKE_CURRENT_LIST_DIR}
+target_include_directories(MODULENAME PUBLIC
+        ${CMAKE_CURRENT_LIST_DIR}/src
+        ${CMAKE_CURRENT_LIST_DIR}/conf
 )
+
+# Set macro guard to allow error strings from MCP251XFD
+target_compile_definitions(MODULENAME PRIVATE USE_ERRORS_STRING)
 
 # Add any user requested libraries
 target_link_libraries(MODULENAME
-        hardware_spi
-        hardware_i2c
-        hardware_timer
-        hardware_clocks
         )
 
 pico_add_extra_outputs(MODULENAME)
