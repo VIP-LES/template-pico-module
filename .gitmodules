@@ -1,0 +1,3 @@
+[submodule "external/MCP251XFD"]
+	path = external/MCP251XFD
+	url = https://github.com/Emandhal/MCP251XFD.git
