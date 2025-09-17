@@ -1,10 +1,10 @@
 #include "pico/stdlib.h"
 #include "hardware/sync.h"
+#include "pico/time.h"
 #include "can.h"
-#include "Conf_MCP251XFD.h"
 #include "MCP251XFD.h"
 
-#define SPI_TRANSMIT_RETRIES 50000U // Arbitrary, but it worked.
+#define SPI_TIMEOUT_US 5000
 
 /* ========== MCP251XFD Initialization Helpers ========== */
 
@@ -148,15 +148,11 @@ eERRORRESULT MCP251XFD_InterfaceTransfer_Pico(void *pIntDev, uint8_t chipSelect,
 
     for (int i = 0; i < size; i++)
     {
-        // I opted to follow the example integration code and use a retry based system.
-        // Note that this method did not work when retries <= 5000 on the 125Mhz clock of the Pico
-        // @ 1 MHz SPI speeds. Your mileage may vary.
-        // A real clock based system would be preferable.
 
-        uint32_t retries = SPI_TRANSMIT_RETRIES;
+        absolute_time_t stop_time = make_timeout_time_us(SPI_TIMEOUT_US);
         while (!spi_is_writable(spi->block))
         {
-            if (!retries--)
+            if (get_absolute_time() >= stop_time)
             {
                 gpio_put(chipSelect, 1);
                 restore_interrupts(irqs);
@@ -167,10 +163,10 @@ eERRORRESULT MCP251XFD_InterfaceTransfer_Pico(void *pIntDev, uint8_t chipSelect,
         // Using raw register access to store the TX byte in the data register, sending over SPI
         spi_get_hw(spi->block)->dr = *txData++;
 
-        retries = SPI_TRANSMIT_RETRIES;
+        stop_time = make_timeout_time_us(SPI_TIMEOUT_US);
         while (!spi_is_readable(spi->block))
         {
-            if (!retries--)
+            if (get_absolute_time() >= stop_time)
             {
                 gpio_put(chipSelect, 1);
                 restore_interrupts(irqs);
