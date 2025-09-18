@@ -57,20 +57,87 @@ eERRORRESULT initialize_CAN(PicoSPI *spi_config, MCP251XFD *device) {
 
     };
 
-    eERRORRESULT result = Init_MCP251XFD(device, &config);
+    // Delay at least 3 more ms before initialization to configure chip clock
+    while(get_absolute_time() <= make_timeout_time_ms(3)) {
+        tight_loop_contents();
+    }
 
-    if (result == ERR_OK) {
-        return ERR_OK;
-    } else if (result == ERR__FREQUENCY_ERROR) {
+    eERRORRESULT result = Init_MCP251XFD(device, &config);
+    if (result == ERR__FREQUENCY_ERROR) {
         // A frequency error is unrecoverable.
         // The out of range frequency value will be stored in
         // `sysclk_speed`. In the future, it would be nice to log this error.
 
         // For now, we do nothing and the sysclk_result will get dropped.
         return ERR__FREQUENCY_ERROR;
-    } else {
+    } else if (result != ERR_OK) {
         return result;
     }
+
+
+    // Setup timestamp
+    eERRORRESULT timestamp_result = MCP251XFD_ConfigureTimeStamp(device, 
+        true, 
+        MCP251XFD_TS_CAN20_SOF_CANFD_SOF, // capture on SOF of every frame
+        40, // prescaler (40 = 1 µs ticks @ 40 MHz SYSCLK)
+        false // We aren't using timestamp super heavily, so no need to interrupt on timer rollover
+    );
+    if (timestamp_result != ERR_OK) {
+        return timestamp_result;
+    }
+
+    // Pointers to fill with RamInfo
+    #define FIFO_COUNT 2
+    // Not using a Transmit Event FIFO
+    MCP251XFD_RAMInfos TXQ_ram_info;
+    MCP251XFD_RAMInfos FIFO_ram_info[FIFO_COUNT - 1]; // Will hold singular RX FIFO
+
+
+    MCP251XFD_FIFO fifo_config[FIFO_COUNT] = {
+        {.Name = MCP251XFD_TXQ,
+         .Size = MCP251XFD_FIFO_8_MESSAGE_DEEP,
+         .Payload = MCP251XFD_PAYLOAD_64BYTE,
+         .Attempts = MCP251XFD_UNLIMITED_ATTEMPTS,
+         .Priority = MCP251XFD_MESSAGE_TX_PRIORITY16,
+         .ControlFlags = MCP251XFD_FIFO_NO_RTR_RESPONSE,
+         .InterruptFlags = MCP251XFD_FIFO_TX_ATTEMPTS_EXHAUSTED_INT + MCP251XFD_FIFO_TRANSMIT_FIFO_NOT_FULL_INT,
+         .RAMInfos = &TXQ_ram_info},
+        {.Name = MCP251XFD_FIFO1,
+         .Size = MCP251XFD_FIFO_16_MESSAGE_DEEP,
+         .Payload = MCP251XFD_PAYLOAD_64BYTE,
+         .Direction = MCP251XFD_RECEIVE_FIFO,
+         .ControlFlags = MCP251XFD_FIFO_ADD_TIMESTAMP_ON_RX,
+         .InterruptFlags = MCP251XFD_FIFO_OVERFLOW_INT + MCP251XFD_FIFO_RECEIVE_FIFO_NOT_EMPTY_INT,
+         .RAMInfos = &FIFO_ram_info[0]
+        }
+    };
+
+    eERRORRESULT fifo_result = MCP251XFD_ConfigureFIFOList(device, &fifo_config[0], FIFO_COUNT);
+    if (fifo_result != ERR_OK) {
+        return fifo_result;
+    }
+
+
+    #define FILTER_COUNT 1
+    MCP251XFD_Filter filter_config[FILTER_COUNT] = {
+        {   .Filter = MCP251XFD_FILTER0,
+            .EnableFilter = true,
+            .AcceptanceID = MCP251XFD_ACCEPT_ALL_MESSAGES,
+            .AcceptanceMask = MCP251XFD_ACCEPT_ALL_MESSAGES,
+            .Match = MCP251XFD_MATCH_SID_EID,
+            .PointTo = MCP251XFD_FIFO1
+        }
+    };
+
+    eERRORRESULT filter_result = MCP251XFD_ConfigureFilterList(device, MCP251XFD_D_NET_FILTER_DISABLE, &filter_config[0], FIFO_COUNT);
+    if (filter_result != ERR_OK) {
+        return filter_result;
+    }
+
+    // Opting to not setup sleep mode yet.
+
+    // Start chip in CAN-FD mode. Configuration is closed.
+    return MCP251XFD_StartCANFD(device);
 }
 
 /* ==========  CAN DRIVERS AND HAL FUNCTIONS   ========== */
