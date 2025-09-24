@@ -33,7 +33,7 @@ include(pico_sdk_import)
 
 # ====================================================================================
 
-project(module-name C CXX ASM)
+project(template-pico-module C CXX ASM)
 
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
@@ -44,38 +44,38 @@ include(MCP251XFD)
 
 
 # Add executable. Default name is the project name, version 0.1
-add_executable(MODULENAME 
+add_executable(TEMPLATE_PICO 
         src/main.c
         src/can.c
 )
 
 
-pico_set_program_name(MODULENAME "Please please please change me!!! (and MODULENAME in CMakeLists.txt)")
-pico_set_program_version(MODULENAME "0.1")
+pico_set_program_name(TEMPLATE_PICO "Pico module template")
+pico_set_program_version(TEMPLATE_PICO "0.1")
 
 # Modify the below lines to enable/disable output over UART/USB
-pico_enable_stdio_uart(MODULENAME 0)
-pico_enable_stdio_usb(MODULENAME 1)
+pico_enable_stdio_uart(TEMPLATE_PICO 0)
+pico_enable_stdio_usb(TEMPLATE_PICO 1)
 
 # Add required template libraries
-target_link_libraries(MODULENAME
+target_link_libraries(TEMPLATE_PICO
         pico_stdlib
         hardware_spi
         MCP251XFD
 )
 
 # Add the standard include files to the build
-target_include_directories(MODULENAME PUBLIC
+target_include_directories(TEMPLATE_PICO PUBLIC
         ${CMAKE_CURRENT_LIST_DIR}/src
         ${CMAKE_CURRENT_LIST_DIR}/conf
 )
 
 # Set macro guard to allow error strings from MCP251XFD
-target_compile_definitions(MODULENAME PRIVATE USE_ERRORS_STRING)
+target_compile_definitions(TEMPLATE_PICO PRIVATE USE_ERRORS_STRING)
 
 # Add any user requested libraries
-target_link_libraries(MODULENAME
+target_link_libraries(TEMPLATE_PICO
         )
 
-pico_add_extra_outputs(MODULENAME)
+pico_add_extra_outputs(TEMPLATE_PICO)
 
