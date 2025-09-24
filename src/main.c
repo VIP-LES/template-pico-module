@@ -1,10 +1,10 @@
-#include "pico/stdlib.h"
-#include "hardware/spi.h"
-#include "hardware/gpio.h"
-#include "can.h"
 #include "MCP251XFD.h"
-#include <stdio.h>
+#include "can.h"
+#include "hardware/gpio.h"
+#include "hardware/spi.h"
+#include "pico/stdlib.h"
 #include <stdint.h>
+#include <stdio.h>
 
 #define SPI_CLK_SPEED 1000000
 #define SPI_PORT spi0
@@ -12,7 +12,6 @@
 #define PIN_CS 5
 #define PIN_SCK 2
 #define PIN_MOSI 3
-
 
 int main(void)
 {
@@ -30,12 +29,11 @@ int main(void)
         .cs_pin = PIN_CS,
         .clock_speed = SPI_CLK_SPEED
     };
-    MCP251XFD can;
+    MCP251XFD can = { 0 };
     eERRORRESULT result = initialize_CAN(&spi, &can);
     const char* reason = ERR_ErrorStrings[result];
 
-    
-    printf("Result of the initialization: %s\n", reason);
+    printf("Resut of the initialization: %s\n", reason);
     while (true) {
         tight_loop_contents();
     }

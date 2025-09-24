@@ -222,3 +222,7 @@ When reporting bugs or requesting features:
 ## License
 
 This project is licensed under the terms specified in the LICENSE file.
+
+- `git submodule update --init --recursive`
+- Open new terminal
+- vscode command palette -> `Cmake: Build`
