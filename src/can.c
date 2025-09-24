@@ -5,6 +5,8 @@
 #include "MCP251XFD.h"
 
 #define SPI_TIMEOUT_US 5000
+// Pointers to fill with RamInfo
+#define FIFO_COUNT 2
 
 /* ========== MCP251XFD Initialization Helpers ========== */
 
@@ -58,9 +60,7 @@ eERRORRESULT initialize_CAN(PicoSPI *spi_config, MCP251XFD *device) {
     };
 
     // Delay at least 3 more ms before initialization to configure chip clock
-    while(get_absolute_time() <= make_timeout_time_ms(3)) {
-        tight_loop_contents();
-    }
+    sleep_ms(3);
 
     eERRORRESULT result = Init_MCP251XFD(device, &config);
     if (result == ERR__FREQUENCY_ERROR) {
@@ -86,11 +86,9 @@ eERRORRESULT initialize_CAN(PicoSPI *spi_config, MCP251XFD *device) {
         return timestamp_result;
     }
 
-    // Pointers to fill with RamInfo
-    #define FIFO_COUNT 2
     // Not using a Transmit Event FIFO
-    MCP251XFD_RAMInfos TXQ_ram_info;
-    MCP251XFD_RAMInfos FIFO_ram_info[FIFO_COUNT - 1]; // Will hold singular RX FIFO
+    MCP251XFD_RAMInfos TXQ_ram_info = {0};
+    MCP251XFD_RAMInfos FIFO_ram_info[FIFO_COUNT - 1] = {{0}};   // Will hold singular RX FIFO
 
 
     MCP251XFD_FIFO fifo_config[FIFO_COUNT] = {
@@ -129,7 +127,7 @@ eERRORRESULT initialize_CAN(PicoSPI *spi_config, MCP251XFD *device) {
         }
     };
 
-    eERRORRESULT filter_result = MCP251XFD_ConfigureFilterList(device, MCP251XFD_D_NET_FILTER_DISABLE, &filter_config[0], FIFO_COUNT);
+    eERRORRESULT filter_result = MCP251XFD_ConfigureFilterList(device, MCP251XFD_D_NET_FILTER_DISABLE, &filter_config[0], FILTER_COUNT);
     if (filter_result != ERR_OK) {
         return filter_result;
     }
