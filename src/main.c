@@ -13,6 +13,69 @@
 #define PIN_SCK 2
 #define PIN_MOSI 3
 
+void print_operation_mode(MCP251XFD* can)
+{
+    eMCP251XFD_OperationMode mode;
+    eERRORRESULT result = MCP251XFD_GetActualOperationMode(can, &mode);
+    if (result == ERR_OK) {
+        printf("Current Operation Mode: ");
+        switch (mode) {
+        case MCP251XFD_NORMAL_CANFD_MODE:
+            printf("Normal CAN-FD\n");
+            break;
+        case MCP251XFD_SLEEP_MODE:
+            printf("Sleep\n");
+            break;
+        case MCP251XFD_INTERNAL_LOOPBACK_MODE:
+            printf("Internal Loopback\n");
+            break;
+        case MCP251XFD_LISTEN_ONLY_MODE:
+            printf("Listen Only\n");
+            break;
+        case MCP251XFD_CONFIGURATION_MODE:
+            printf("Configuration\n");
+            break;
+        case MCP251XFD_EXTERNAL_LOOPBACK_MODE:
+            printf("External Loopback\n");
+            break;
+        case MCP251XFD_NORMAL_CAN20_MODE:
+            printf("Normal CAN 2.0\n");
+            break;
+        case MCP251XFD_RESTRICTED_OPERATION_MODE:
+            printf("Restricted Operation\n");
+            break;
+        default:
+            printf("Unknown\n");
+            break;
+        }
+    } else {
+        printf("Failed to get operation mode.\n");
+    }
+}
+
+void print_error_status(MCP251XFD* can)
+{
+    uint8_t tec, rec;
+    eMCP251XFD_TXRXErrorStatus status;
+
+    if (MCP251XFD_GetTransmitReceiveErrorCountAndStatus(can, &tec, &rec, &status) == ERR_OK) {
+        printf("TEC: %3u | REC: %3u | Status: ", tec, rec);
+        if (status & MCP251XFD_TX_BUS_OFF_STATE)
+            printf("TX_BUS_OFF ");
+        if (status & MCP251XFD_TX_BUS_PASSIVE_STATE)
+            printf("TX_PASSIVE ");
+        if (status & MCP251XFD_TX_WARNING_STATE)
+            printf("TX_WARNING ");
+        if (status & MCP251XFD_RX_BUS_PASSIVE_STATE)
+            printf("RX_PASSIVE ");
+        if (status & MCP251XFD_RX_WARNING_STATE)
+            printf("RX_WARNING ");
+        if (status == 0)
+            printf("OK");
+        printf("\n");
+    }
+}
+
 int main(void)
 {
     stdio_init_all();
@@ -42,12 +105,17 @@ int main(void)
         }
     }
 
+    print_operation_mode(&can);
+
     // See page 16 of the driver library pdf
 
     uint8_t frame_counter = 0;
     uint32_t transit_iterator = 0;
 
     for (;; transit_iterator++) {
+        printf("Status before TX: ");
+        print_error_status(&can);
+
         // 1. Prepare the CAN message
         uint8_t payload[8] = { frame_counter, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x00 };
         MCP251XFD_CANMessage message = {
@@ -65,7 +133,7 @@ int main(void)
             // 3. If there is space, transmit the message
             result = MCP251XFD_TransmitMessageToTXQ(&can, &message, true); // `true` to flush/request transmission
             if (result == ERR_OK) {
-                printf("Successfully sent CAN frame. Counter: %d\n", frame_counter);
+                printf("Successfully queued CAN frame. Counter: %d\n", frame_counter);
                 frame_counter++;
             } else {
                 printf("Failed to transmit CAN frame. Error: %s\n", ERR_ErrorStrings[result]);
@@ -76,6 +144,11 @@ int main(void)
         } else {
             printf("TXQ is full, skipping transmission this cycle.\n");
         }
+
+        sleep_ms(10);
+
+        printf("Status after TX:  ");
+        print_error_status(&can);
 
         // 4. Every 5 iterations, check if there are any received messages and print the number of messages in transmit queue
         if (transit_iterator > 0 && transit_iterator % 5 == 0) {
