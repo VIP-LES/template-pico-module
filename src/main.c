@@ -45,8 +45,9 @@ int main(void)
     // See page 16 of the driver library pdf
 
     uint8_t frame_counter = 0;
+    uint32_t transit_iterator = 0;
 
-    while (true) {
+    for (;; transit_iterator++) {
         // 1. Prepare the CAN message
         uint8_t payload[8] = { frame_counter, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x00 };
         MCP251XFD_CANMessage message = {
@@ -71,8 +72,63 @@ int main(void)
             }
         } else if (result != ERR_OK) {
             printf("Failed to get TXQ status. Error: %s\n", ERR_ErrorStrings[result]);
+            break;
         } else {
             printf("TXQ is full, skipping transmission this cycle.\n");
+        }
+
+        // 4. Every 5 iterations, check if there are any received messages and print the number of messages in transmit queue
+        if (transit_iterator > 0 && transit_iterator % 5 == 0) {
+            uint8_t txq_index;
+            // Get the index of the next message to be written, which equals the current number of messages
+            result = MCP251XFD_GetNextMessageAddressTXQ(&can, NULL, &txq_index);
+            if (result == ERR_OK) {
+                printf("TXQ Status: %u messages.\n", txq_index);
+            } else {
+                printf("Failed to get TXQ index. Error: %s\n", ERR_ErrorStrings[result]);
+            }
+
+            printf("\n--- Checking for received messages ---\n");
+
+            eMCP251XFD_FIFOstatus rx_fifo_status;
+            result = MCP251XFD_GetFIFOStatus(&can, MCP251XFD_FIFO1, &rx_fifo_status);
+
+            // Keep reading messages as long as the FIFO is not empty
+            while (result == ERR_OK && (rx_fifo_status & MCP251XFD_RX_FIFO_NOT_EMPTY)) {
+                // Prepare to receive the message
+                uint8_t rx_payload[64];
+                uint32_t timestamp;
+                MCP251XFD_CANMessage rx_message;
+                rx_message.PayloadData = rx_payload;
+
+                result = MCP251XFD_ReceiveMessageFromFIFO(&can, &rx_message, MCP251XFD_PAYLOAD_64BYTE, &timestamp, MCP251XFD_FIFO1);
+
+                if (result == ERR_OK) {
+                    printf("    Message Received from FIFO1!\n");
+                    printf("        ID: 0x%lX\n", rx_message.MessageID);
+                    printf("        Timestamp: %lu µs\n", timestamp); // Timestamp is in µs based on prescaler
+
+                    bool isFD = (rx_message.ControlFlags & MCP251XFD_CANFD_FRAME);
+                    uint8_t dlc_bytes = MCP251XFD_DLCToByte(rx_message.DLC, isFD);
+                    printf("        DLC: %d bytes\n", dlc_bytes);
+
+                    printf("        Payload: ");
+                    for (int i = 0; i < dlc_bytes; i++) {
+                        printf("        0x%02X ", rx_message.PayloadData[i]);
+                    }
+                    printf("\n\n");
+                } else {
+                    printf("Failed to receive message. Error: %s\n", ERR_ErrorStrings[result]);
+                    break;
+                }
+
+                // Check the status again to see if more messages are in the queue
+                result = MCP251XFD_GetFIFOStatus(&can, MCP251XFD_FIFO1, &rx_fifo_status);
+            }
+            if (!(rx_fifo_status & MCP251XFD_RX_FIFO_NOT_EMPTY)) {
+                printf("RX FIFO1 is empty.\n");
+            }
+            printf("--- Done checking ---\n\n");
         }
 
         sleep_ms(1000);
