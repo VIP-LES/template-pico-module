@@ -125,7 +125,9 @@ eERRORRESULT initialize_CAN(PicoSPI* spi_config, MCP251XFD* device)
     // Opting to not setup sleep mode yet.
 
     // Start chip in CAN-FD mode. Configuration is closed.
-    return MCP251XFD_StartCANFD(device);
+    // return MCP251XFD_StartCANFD(device);
+
+    return MCP251XFD_RequestOperationMode(device, MCP251XFD_INTERNAL_LOOPBACK_MODE, true);
 }
 
 /* ==========  CAN DRIVERS AND HAL FUNCTIONS   ========== */
