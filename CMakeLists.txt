@@ -42,40 +42,84 @@ pico_sdk_init()
 set(CONF_MCP251XFD_DIR ${CMAKE_CURRENT_SOURCE_DIR}/conf)
 include(MCP251XFD)
 
+# ====================================================================================
+# === Transmitter build (main.c) ===
+# ====================================================================================
 
 # Add executable. Default name is the project name, version 0.1
-add_executable(TEMPLATE_PICO 
+add_executable(PICO_CAN_TX
         src/main.c
         src/can.c
 )
 
-
-pico_set_program_name(TEMPLATE_PICO "Pico module template")
-pico_set_program_version(TEMPLATE_PICO "0.1")
+# Set program name and version
+pico_set_program_name(PICO_CAN_TX "PICO CAN Transmitter")
+pico_set_program_version(PICO_CAN_TX "0.1")
 
 # Modify the below lines to enable/disable output over UART/USB
-pico_enable_stdio_uart(TEMPLATE_PICO 0)
-pico_enable_stdio_usb(TEMPLATE_PICO 1)
+pico_enable_stdio_uart(PICO_CAN_TX 0)
+pico_enable_stdio_usb(PICO_CAN_TX 1)
 
-# Add required template libraries
-target_link_libraries(TEMPLATE_PICO
+# Add required libraries
+target_link_libraries(PICO_CAN_TX
         pico_stdlib
         hardware_spi
         MCP251XFD
 )
 
 # Add the standard include files to the build
-target_include_directories(TEMPLATE_PICO PUBLIC
+target_include_directories(PICO_CAN_TX PUBLIC
         ${CMAKE_CURRENT_LIST_DIR}/src
         ${CMAKE_CURRENT_LIST_DIR}/conf
 )
 
 # Set macro guard to allow error strings from MCP251XFD
-target_compile_definitions(TEMPLATE_PICO PRIVATE USE_ERRORS_STRING)
+target_compile_definitions(PICO_CAN_TX PRIVATE USE_ERRORS_STRING)
 
 # Add any user requested libraries
-target_link_libraries(TEMPLATE_PICO
+target_link_libraries(PICO_CAN_TX
         )
 
-pico_add_extra_outputs(TEMPLATE_PICO)
+# Add the standard extra outputs (UF2, bin, etc.)
+pico_add_extra_outputs(PICO_CAN_TX)
 
+# ====================================================================================
+# === Receiver build (receiver_main.c) ===
+# ====================================================================================
+
+# Add executable for receiver Pico
+add_executable(PICO_CAN_RX
+        src/receiver_main.c
+        src/can.c
+)
+
+# Set program name and version
+pico_set_program_name(PICO_CAN_RX "PICO CAN Receiver")
+pico_set_program_version(PICO_CAN_RX "0.1")
+
+# Modify the below lines to enable/disable output over UART/USB
+pico_enable_stdio_uart(PICO_CAN_RX 0)
+pico_enable_stdio_usb(PICO_CAN_RX 1)
+
+# Add required libraries
+target_link_libraries(PICO_CAN_RX
+        pico_stdlib
+        hardware_spi
+        MCP251XFD
+)
+
+# Add the standard include files to the build
+target_include_directories(PICO_CAN_RX PUBLIC
+        ${CMAKE_CURRENT_LIST_DIR}/src
+        ${CMAKE_CURRENT_LIST_DIR}/conf
+)
+
+# Set macro guard to allow error strings from MCP251XFD
+target_compile_definitions(PICO_CAN_RX PRIVATE USE_ERRORS_STRING)
+
+# Add any user requested libraries
+target_link_libraries(PICO_CAN_RX
+        )
+
+# Add the standard extra outputs (UF2, bin, etc.)
+pico_add_extra_outputs(PICO_CAN_RX)

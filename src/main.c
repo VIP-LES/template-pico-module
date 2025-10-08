@@ -3,15 +3,9 @@
 #include "hardware/gpio.h"
 #include "hardware/spi.h"
 #include "pico/stdlib.h"
+#include "can_pico_pins.h"
 #include <stdint.h>
 #include <stdio.h>
-
-#define SPI_CLK_SPEED 1000000
-#define SPI_PORT spi0
-#define PIN_MISO 4
-#define PIN_CS 5
-#define PIN_SCK 2
-#define PIN_MOSI 3
 
 void print_operation_mode(MCP251XFD* can)
 {
