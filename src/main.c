@@ -12,6 +12,20 @@
 #define PIN_CS 5
 #define PIN_SCK 2
 #define PIN_MOSI 3
+#define PIN_CAN_INT 6 // GPIO pin connected to the MCP251XFD INT1 pin
+
+// A volatile flag to be set by the ISR
+volatile bool can_message_received = false;
+
+// Interrupt Service Routine for CAN message reception
+void can_irq_handler(uint gpio, uint32_t events)
+{
+    // Simply set the flag. The main loop will handle the message processing.
+    if (gpio == PIN_CAN_INT && (events & GPIO_IRQ_EDGE_FALL)) {
+        can_message_received = true;
+        gpio_pull_down(PIN_CAN_INT);
+    }
+}
 
 void print_operation_mode(MCP251XFD* can)
 {
@@ -83,6 +97,13 @@ int main(void)
     while (!stdio_usb_connected())
         sleep_ms(100);
 
+    // Setup GPIO interrupt for receiving CAN messages
+    gpio_init(PIN_CAN_INT);
+    gpio_set_dir(PIN_CAN_INT, GPIO_IN);
+    gpio_pull_up(PIN_CAN_INT);
+    // The MCP251XFD INT pins are active low, so we trigger on a falling edge.
+    gpio_set_irq_enabled_with_callback(PIN_CAN_INT, GPIO_IRQ_EDGE_FALL, true, &can_irq_handler);
+
     printf("Starting MCP2518FD test...\n");
     PicoSPI spi = {
         .block = SPI_PORT,
@@ -107,17 +128,11 @@ int main(void)
 
     print_operation_mode(&can);
 
-    // See page 16 of the driver library pdf
-
     uint8_t frame_counter = 0;
-    uint32_t transit_iterator = 0;
 
-    for (;; transit_iterator++) {
-        printf("Status before TX: ");
-        print_error_status(&can);
-
-        // 1. Prepare the CAN message
-        uint8_t payload[8] = { frame_counter, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x00 };
+    for (;;) {
+        // 1. Prepare and send a CAN message
+        uint8_t payload[8] = { frame_counter, 0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE, 0x00 };
         MCP251XFD_CANMessage message = {
             .MessageID = 0x123,
             .ControlFlags = MCP251XFD_CANFD_FRAME | MCP251XFD_NO_SWITCH_BITRATE | MCP251XFD_STANDARD_MESSAGE_ID,
@@ -125,43 +140,21 @@ int main(void)
             .PayloadData = payload
         };
 
-        // 2. Check if the Transmit Queue has space
-        eMCP251XFD_TXQstatus txq_status;
-        result = MCP251XFD_GetTXQStatus(&can, &txq_status);
-
-        if (result == ERR_OK && (txq_status & MCP251XFD_TX_FIFO_NOT_FULL)) {
-            // 3. If there is space, transmit the message
-            result = MCP251XFD_TransmitMessageToTXQ(&can, &message, true); // `true` to flush/request transmission
-            if (result == ERR_OK) {
-                printf("Successfully queued CAN frame. Counter: %d\n", frame_counter);
-                frame_counter++;
-            } else {
-                printf("Failed to transmit CAN frame. Error: %s\n", ERR_ErrorStrings[result]);
-            }
-        } else if (result != ERR_OK) {
-            printf("Failed to get TXQ status. Error: %s\n", ERR_ErrorStrings[result]);
-            break;
+        result = MCP251XFD_TransmitMessageToTXQ(&can, &message, true); // `true` to flush
+        if (result == ERR_OK) {
+            printf("Transmitted frame. Counter: %d\n", frame_counter);
+            frame_counter++;
         } else {
-            printf("TXQ is full, skipping transmission this cycle.\n");
+            printf("Failed to transmit CAN frame. Error: %s\n", ERR_ErrorStrings[result]);
         }
 
-        sleep_ms(10);
+        sleep_ms(1000); // Wait a second before sending the next frame
 
-        printf("Status after TX:  ");
-        print_error_status(&can);
+        // 2. Check if the interrupt fired
+        if (can_message_received) {
+            can_message_received = false; // Reset the flag
 
-        // 4. Every 5 iterations, check if there are any received messages and print the number of messages in transmit queue
-        if (transit_iterator > 0 && transit_iterator % 5 == 0) {
-            uint8_t txq_index;
-            // Get the index of the next message to be written, which equals the current number of messages
-            result = MCP251XFD_GetNextMessageAddressTXQ(&can, NULL, &txq_index);
-            if (result == ERR_OK) {
-                printf("TXQ Status: %u messages.\n", txq_index);
-            } else {
-                printf("Failed to get TXQ index. Error: %s\n", ERR_ErrorStrings[result]);
-            }
-
-            printf("\n--- Checking for received messages ---\n");
+            printf("\n--- Interrupt triggered! Checking for received messages ---\n");
 
             eMCP251XFD_FIFOstatus rx_fifo_status;
             result = MCP251XFD_GetFIFOStatus(&can, MCP251XFD_FIFO1, &rx_fifo_status);
@@ -187,7 +180,7 @@ int main(void)
 
                     printf("        Payload: ");
                     for (int i = 0; i < dlc_bytes; i++) {
-                        printf("        0x%02X ", rx_message.PayloadData[i]);
+                        printf("0x%02X ", rx_message.PayloadData[i]);
                     }
                     printf("\n\n");
                 } else {
@@ -203,7 +196,5 @@ int main(void)
             }
             printf("--- Done checking ---\n\n");
         }
-
-        sleep_ms(1000);
     }
 }
