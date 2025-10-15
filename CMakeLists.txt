@@ -45,10 +45,12 @@ include(libcanard)
 
 
 # Add executable. Default name is the project name, version 0.1
-add_executable(TEMPLATE_PICO 
-        src/main.c
-        src/can.c
+file(GLOB SRC_FILES
+    src/*.c
+    src/cyphal/*.c
 )
+
+add_executable(TEMPLATE_PICO ${SRC_FILES})
 
 
 pico_set_program_name(TEMPLATE_PICO "Pico module template")
@@ -68,12 +70,19 @@ target_link_libraries(TEMPLATE_PICO
 
 # Add the standard include files to the build
 target_include_directories(TEMPLATE_PICO PUBLIC
-        ${CMAKE_CURRENT_LIST_DIR}/src
-        ${CMAKE_CURRENT_LIST_DIR}/conf
+    ${PROJECT_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/src/cyphal
+    ${PROJECT_SOURCE_DIR}/src/cyphal/generated
+    ${PROJECT_SOURCE_DIR}/external/MCP251XFD
+    ${PROJECT_SOURCE_DIR}/external/libcanard/libcanard
+    ${PROJECT_SOURCE_DIR}/conf
 )
 
 # Set macro guard to allow error strings from MCP251XFD
-target_compile_definitions(TEMPLATE_PICO PRIVATE USE_ERRORS_STRING)
+target_compile_definitions(TEMPLATE_PICO PRIVATE 
+        USE_ERRORS_STRING
+        CANARD_USE_STDLIB
+)
 
 # Add any user requested libraries
 target_link_libraries(TEMPLATE_PICO
