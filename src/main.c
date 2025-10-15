@@ -20,10 +20,8 @@ volatile bool can_message_received = false;
 // Interrupt Service Routine for CAN message reception
 void can_irq_handler(uint gpio, uint32_t events)
 {
-    // Simply set the flag. The main loop will handle the message processing.
     if (gpio == PIN_CAN_INT && (events & GPIO_IRQ_EDGE_FALL)) {
         can_message_received = true;
-        gpio_pull_down(PIN_CAN_INT);
     }
 }
 
@@ -149,6 +147,7 @@ int main(void)
         }
 
         sleep_ms(1000); // Wait a second before sending the next frame
+        // print_error_status(&can);
 
         // 2. Check if the interrupt fired
         if (can_message_received) {
@@ -194,6 +193,10 @@ int main(void)
             if (!(rx_fifo_status & MCP251XFD_RX_FIFO_NOT_EMPTY)) {
                 printf("RX FIFO1 is empty.\n");
             }
+
+            MCP251XFD_ClearInterruptEvents(&can, MCP251XFD_INT_RX_EVENT);
+            irq_clear(PIN_CAN_INT);
+
             printf("--- Done checking ---\n\n");
         }
     }

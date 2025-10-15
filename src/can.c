@@ -50,7 +50,7 @@ eERRORRESULT initialize_CAN(PicoSPI* spi_config, MCP251XFD* device)
         .INTsOutMode = MCP251XFD_PINS_PUSHPULL_OUT,
         .TXCANOutMode = MCP251XFD_PINS_PUSHPULL_OUT,
 
-        .SysInterruptFlags = MCP251XFD_INT_ENABLE_ALL_EVENTS
+        .SysInterruptFlags = MCP251XFD_INT_RX_EVENT
 
     };
 
