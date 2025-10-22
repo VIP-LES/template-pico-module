@@ -94,7 +94,7 @@ eERRORRESULT initialize_CAN(PicoSPI* spi_config, MCP251XFD* device)
             .InterruptFlags = MCP251XFD_FIFO_TX_ATTEMPTS_EXHAUSTED_INT + MCP251XFD_FIFO_TRANSMIT_FIFO_NOT_FULL_INT,
             .RAMInfos = &TXQ_ram_info },
         { .Name = MCP251XFD_FIFO1,
-            .Size = MCP251XFD_FIFO_16_MESSAGE_DEEP,
+            .Size = MCP251XFD_FIFO_4_MESSAGE_DEEP, // MCP251XFD_FIFO_16_MESSAGE_DEEP,
             .Payload = MCP251XFD_PAYLOAD_64BYTE,
             .Direction = MCP251XFD_RECEIVE_FIFO,
             .ControlFlags = MCP251XFD_FIFO_ADD_TIMESTAMP_ON_RX,
@@ -125,9 +125,9 @@ eERRORRESULT initialize_CAN(PicoSPI* spi_config, MCP251XFD* device)
     // Opting to not setup sleep mode yet.
 
     // Start chip in CAN-FD mode. Configuration is closed.
-    // return MCP251XFD_StartCANFD(device);
+    return MCP251XFD_StartCANFD(device);
 
-    return MCP251XFD_RequestOperationMode(device, MCP251XFD_INTERNAL_LOOPBACK_MODE, true);
+    // return MCP251XFD_RequestOperationMode(device, MCP251XFD_INTERNAL_LOOPBACK_MODE, true);
 }
 
 /* ==========  CAN DRIVERS AND HAL FUNCTIONS   ========== */
