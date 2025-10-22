@@ -147,7 +147,7 @@ int main(void)
         }
 
         sleep_ms(1000); // Wait a second before sending the next frame
-        // print_error_status(&can);
+        print_error_status(&can);
 
         // 2. Check if the interrupt fired
         if (can_message_received || frame_counter % 5 == 0) {
