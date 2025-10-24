@@ -42,6 +42,7 @@ pico_sdk_init()
 set(CONF_MCP251XFD_DIR ${CMAKE_CURRENT_SOURCE_DIR}/conf)
 include(MCP251XFD)
 include(libcanard)
+include(o1heap)
 
 
 # Add executable. Default name is the project name, version 0.1
@@ -66,6 +67,7 @@ target_link_libraries(TEMPLATE_PICO
         hardware_spi
         MCP251XFD
         libcanard
+        o1heap
 )
 
 # Add the standard include files to the build
