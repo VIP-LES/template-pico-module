@@ -35,9 +35,9 @@ eERRORRESULT initialize_CAN(PicoSPI* spi_config, MCP251XFD* device)
     // stack and updating a crystal frequency is a bad bad idea.
     // it works for now, but beware.
     const MCP251XFD_Config config = {
-        .XtalFreq = 4000000,
+        .XtalFreq = 40000000,
         .OscFreq = 0,
-        .SysclkConfig = MCP251XFD_SYSCLK_IS_CLKIN_MUL_10,
+        .SysclkConfig = MCP251XFD_SYSCLK_IS_CLKIN,
         .SYSCLK_Result = &sysclk_speed,
         .NominalBitrate = 1000000,
         .DataBitrate = 4000000, // Arbitrary and untested. Need to find a safe default - can run up to 8Mbps
