@@ -10,7 +10,7 @@
 
 // Heap size ≈ (# concurrent transfers) x (max payload size + ~100 B overhead)
 // This value NEEDS TO BE TUNED!!!
-#define RAW_HEAP_SIZE 2048U
+#define RAW_HEAP_SIZE 16384U
 #define HEAP_SIZE ((RAW_HEAP_SIZE + (O1HEAP_ALIGNMENT - 1u)) & ~(O1HEAP_ALIGNMENT - 1u))
 
 static uint8_t cyphal_heap_buffer[HEAP_SIZE] __attribute__((aligned(O1HEAP_ALIGNMENT)));

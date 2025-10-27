@@ -158,8 +158,8 @@ int main(void)
         &ins,
         CanardTransferKindMessage, // Type of transfer: message (broadcast)
         1234, // KEEP OPPOSITE ON DIFFERENT BOARDS
-        CANARD_DEFAULT_TRANSFER_ID_TIMEOUT_USEC,
-        CANARD_MTU_CAN_FD,
+        CANARD_MTU_CAN_FD, // Correct extent (max payload size)
+        CANARD_DEFAULT_TRANSFER_ID_TIMEOUT_USEC, // Correct transfer timeout
         &test_sub);
 
     if (sub_result < 0) {
