@@ -149,15 +149,15 @@ int main(void)
     struct CanardTxQueue tx_queue = canardTxInit(32, CANARD_MTU_CAN_FD, memory);
 
     // EXAMPLE NODE ID (subject to change)
-    ins.node_id   = 42;
+    ins.node_id = 42;
 
     // Subscription object
     static CanardRxSubscription test_sub;
 
     int32_t sub_result = canardRxSubscribe(
         &ins,
-        CanardTransferKindMessage,   // Type of transfer: message (broadcast)
-        2468,                        // Subject ID of the message we are subscribing to
+        CanardTransferKindMessage, // Type of transfer: message (broadcast)
+        2468, // Subject ID of the message we are subscribing to
         CANARD_DEFAULT_TRANSFER_ID_TIMEOUT_USEC,
         CANARD_MTU_CAN_FD,
         &test_sub);
@@ -168,8 +168,6 @@ int main(void)
 
     // =====================
 
-    
-
     uint8_t message_counter = 0;
 
     for (;;) {
@@ -179,15 +177,15 @@ int main(void)
         // --------------------
 
         // Example: simple payload of 3 bytes
-        uint8_t payload[4] = {message_counter++, 0xAA, 0xBB, 0xCC};
+        uint8_t payload[4] = { message_counter, 0xAA, 0xBB, 0xCC };
 
         // Build metadata describing this transfer
         struct CanardTransferMetadata metadata = {
-            .priority       = CanardPriorityNominal,
-            .transfer_kind  = CanardTransferKindMessage,
-            .port_id        = 1234,                  // subject ID
-            .remote_node_id = CANARD_NODE_ID_UNSET,  // broadcast
-            .transfer_id    = 0                      // must increment per subject
+            .priority = CanardPriorityNominal,
+            .transfer_kind = CanardTransferKindMessage,
+            .port_id = 1234, // subject ID
+            .remote_node_id = CANARD_NODE_ID_UNSET, // broadcast
+            .transfer_id = message_counter++ // must increment per subject
         };
 
         // Wrap payload into a CanardPayload
@@ -199,20 +197,21 @@ int main(void)
         // Push transfer into TX queue
         uint64_t frames_expired = 0;
         int32_t result = canardTxPush(&tx_queue, &ins,
-                                    cyphal_port_get_usec() + 1000000,  // 1-second deadline
-                                    &metadata, pl, 0, &frames_expired);
+            cyphal_port_get_usec() + 1000000, // 1-second deadline
+            &metadata, pl, 0, &frames_expired);
 
         if (result < 0) {
             printf("canardTxPush failed: %ld\n", (long)result);
+        } else {
+            printf("Pushed message with counter: %d\n", message_counter);
         }
-
 
         // Send the payload on the bus using the "cyphal_porting" layer
         struct CanardTxQueueItem* item = canardTxPeek(&tx_queue);
         while (item != NULL) {
-            cyphal_tx(&item->frame);                 // your hardware send
+            cyphal_tx(&item->frame); // your hardware send
             canardTxPop(&tx_queue, item);
-            canardTxFree(&tx_queue, &ins, item);     // new mandatory free call
+            canardTxFree(&tx_queue, &ins, item); // new mandatory free call
             item = canardTxPeek(&tx_queue);
         }
 
@@ -221,7 +220,6 @@ int main(void)
         // ==========================
         // CHECK FOR RECEIVED MESSAGE
         // --------------------------
-
 
         // Check if the interrupt has sent the "message received" flag;
         // if so, call the "rx_process" from the "cyphal_porting" layer
@@ -234,7 +232,6 @@ int main(void)
         }
 
         // ==========================
-
 
         // Delay between loops
         sleep_ms(500);
