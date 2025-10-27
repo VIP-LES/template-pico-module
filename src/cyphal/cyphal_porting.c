@@ -106,7 +106,7 @@ void cyphal_rx_process(CanardInstance* ins)
         CanardRxSubscription* subscription;
         int32_t result = canardRxAccept(ins, timestamp_us, &rx_frame, 0, &transfer, &subscription);
 
-        if (result >= 0) {
+        if (result == 1) { // A transfer was successfully received
             printf("Received Cyphal transfer on port %u (%zu bytes)\n",
                 subscription->port_id, transfer.payload.size);
 
@@ -125,7 +125,8 @@ void cyphal_rx_process(CanardInstance* ins)
             }
             printf("\n\n");
 
-        } else {
+        } else if (result < 0) {
+            // It's good practice to log errors
             printf("canardRxAccept() returned error code %ld\n", (long)result);
         }
 

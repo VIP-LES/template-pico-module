@@ -157,7 +157,7 @@ int main(void)
     int32_t sub_result = canardRxSubscribe(
         &ins,
         CanardTransferKindMessage, // Type of transfer: message (broadcast)
-        2468, // Subject ID of the message we are subscribing to
+        1234, // KEEP OPPOSITE ON DIFFERENT BOARDS
         CANARD_DEFAULT_TRANSFER_ID_TIMEOUT_USEC,
         CANARD_MTU_CAN_FD,
         &test_sub);
@@ -183,7 +183,7 @@ int main(void)
         struct CanardTransferMetadata metadata = {
             .priority = CanardPriorityNominal,
             .transfer_kind = CanardTransferKindMessage,
-            .port_id = 1234, // subject ID
+            .port_id = 2468, // KEEP OPPOSITE ON DIFFERENT BOARDS
             .remote_node_id = CANARD_NODE_ID_UNSET, // broadcast
             .transfer_id = message_counter++ // must increment per subject
         };
@@ -224,7 +224,7 @@ int main(void)
         // Check if the interrupt has sent the "message received" flag;
         // if so, call the "rx_process" from the "cyphal_porting" layer
         // to receieve the message from the MCP receieve FIFO.
-        if (can_message_received) {
+        if (can_message_received || message_counter % 5 == 0) {
             can_message_received = false;
             printf("\n--- RX interrupt triggered ---\n");
             cyphal_rx_process(&ins);
