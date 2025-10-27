@@ -26,7 +26,7 @@ endif()
 set(PICO_BOARD pimoroni_pico_plus2_rp2350 CACHE STRING "Board type")
 
 # add CMake directory in path
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import)
@@ -39,20 +39,18 @@ project(template-pico-module C CXX ASM)
 pico_sdk_init()
 
 # Initialize the MCP251XFD library
-set(CONF_MCP251XFD_DIR ${CMAKE_CURRENT_SOURCE_DIR}/conf)
-include(MCP251XFD)
+set(CONF_MCP251XFD_DIR ${CMAKE_SOURCE_DIR}/conf)
 include(libcanard)
 include(o1heap)
+add_subdirectory(src/drivers)
 
 
 # Add executable. Default name is the project name, version 0.1
 file(GLOB SRC_FILES
     src/*.c
-    src/cyphal/*.c
 )
 
 add_executable(TEMPLATE_PICO ${SRC_FILES})
-
 
 pico_set_program_name(TEMPLATE_PICO "Pico module template")
 pico_set_program_version(TEMPLATE_PICO "0.1")
@@ -65,7 +63,7 @@ pico_enable_stdio_usb(TEMPLATE_PICO 1)
 target_link_libraries(TEMPLATE_PICO
         pico_stdlib
         hardware_spi
-        MCP251XFD
+        driver_mcp251xfd
         libcanard
         o1heap
 )
@@ -73,22 +71,7 @@ target_link_libraries(TEMPLATE_PICO
 # Add the standard include files to the build
 target_include_directories(TEMPLATE_PICO PUBLIC
     ${PROJECT_SOURCE_DIR}/src
-    ${PROJECT_SOURCE_DIR}/src/cyphal
-    ${PROJECT_SOURCE_DIR}/src/cyphal/generated
-    ${PROJECT_SOURCE_DIR}/external/MCP251XFD
-    ${PROJECT_SOURCE_DIR}/external/libcanard/libcanard
-    ${PROJECT_SOURCE_DIR}/conf
 )
-
-# Set macro guard to allow error strings from MCP251XFD
-target_compile_definitions(TEMPLATE_PICO PRIVATE 
-        USE_ERRORS_STRING
-        CANARD_USE_STDLIB
-)
-
-# Add any user requested libraries
-target_link_libraries(TEMPLATE_PICO
-        )
 
 pico_add_extra_outputs(TEMPLATE_PICO)
 
