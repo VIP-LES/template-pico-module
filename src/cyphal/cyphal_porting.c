@@ -34,8 +34,7 @@ static inline uint8_t MCP251XFD_BytesToDLC(uint8_t n)
     return 15;  // 64 bytes
 }
 
-bool cyphal_tx(const CanardFrame *frame)
-{
+bool cyphal_tx(const struct CanardMutableFrame* frame) {
     // Ensure valid CAN device and frame pointer.
     if (!g_can || !frame)
         return false;
@@ -55,69 +54,80 @@ bool cyphal_tx(const CanardFrame *frame)
     return (r == ERR_OK);
 }
 
-void cyphal_rx_poll(CanardInstance *ins)
+void cyphal_rx_process(CanardInstance *ins)
 {
-    // Ensure valid CAN device and CanardInstance.
+    // Ensure valid CAN device and instance
     if (!g_can || !ins)
         return;
 
-    // Query the status of the RX FIFO (FIFO1).
+    // Check if there is at least one frame to process
     eMCP251XFD_FIFOstatus rx_fifo_status;
-    eERRORRESULT r = MCP251XFD_GetFIFOStatus(g_can, MCP251XFD_FIFO1, &rx_fifo_status);
-    if (r != ERR_OK)
-        return;  // Hardware not ready or bad status.
+    if (MCP251XFD_GetFIFOStatus(g_can, MCP251XFD_FIFO1, &rx_fifo_status) != ERR_OK)
+        return;
+    if (!(rx_fifo_status & MCP251XFD_RX_FIFO_NOT_EMPTY))
+        return; // Nothing to process
 
-    // Loop while the RX FIFO contains messages.
-    while (rx_fifo_status & MCP251XFD_RX_FIFO_NOT_EMPTY)
-    {
-        // Temporary storage for received message.
+    for (;;) {
+
+        // Drain one frame from receive FIFO
         MCP251XFD_CANMessage msg;
-        uint8_t payload[64];  // Maximum CAN-FD payload size.
-        uint32_t timestamp_us = 0;  // Timestamp of the received frame.
+        uint8_t payload[64];
+        uint32_t timestamp_us = 0;
+        msg.PayloadData = payload;
 
-        msg.PayloadData = payload;  // Driver writes payload data here.
+        eERRORRESULT r = MCP251XFD_ReceiveMessageFromFIFO(
+            g_can, &msg, MCP251XFD_PAYLOAD_64BYTE, &timestamp_us, MCP251XFD_FIFO1);
 
-        // Pull one message from FIFO1 into 'msg'.
-        r = MCP251XFD_ReceiveMessageFromFIFO(
-                g_can,
-                &msg,
-                MCP251XFD_PAYLOAD_64BYTE,  // Expecting up to 64-byte CAN-FD payload.
-                &timestamp_us,
-                MCP251XFD_FIFO1
-        );
-
-        // If reading failed, break to avoid infinite looping.
+        // Abort loop on any frame read error.
         if (r != ERR_OK)
             break;
 
-        // Convert driver message → Libcanard frame structure.
         CanardFrame rx_frame = {
             .extended_can_id = msg.MessageID,
-            .payload = {
-                .data = msg.PayloadData,
-                .size = MCP251XFD_DLCToByte(msg.DLC, true) // isFD == true
-            }
+            .payload = { .data = msg.PayloadData,
+                        .size = MCP251XFD_DLCToByte(msg.DLC, true) }
         };
 
-        /*
-        Pass the frame to Libcanard for processing.
-        interface index = 0 (always 0 in a one-bus setup).
-        Last two parameters (NULL):
-            1) CanardRxSubscription** out_subscription – NULL; 
-                LibCanard would fill *out_subscription with the subscription
-                object that matches the frame subject id
-            2) CanardRxTransfer* out_transfer – NULL;
-                LibCanard would fill *out_transfer with the assembled message
-                data (only if rx_frame is the LAST FRAME in a full message)
+        // ======================================
+        // TEMPORARY LOGGING OF RECEIVED MESSAGES
+        // --------------------------------------
 
-        The return result is currently ignored (hence the void cast)
-        */
-        (void)canardRxAccept(ins, timestamp_us, &rx_frame, 0, NULL, NULL);
+        // Attempt to reassemble one complete Cyphal transfer from the incoming frame.
+        // If this frame completes a full transfer, Libcanard fills `transfer` and `subscription`.
+        CanardRxTransfer transfer;
+        CanardRxSubscription* subscription;
+        int32_t result = canardRxAccept(ins, timestamp_us, &rx_frame, 0, &transfer, &subscription);
 
-        // Check FIFO again in case more frames arrived.
+        if (result >= 0) {
+            printf("Received Cyphal transfer on port %u (%zu bytes)\n",
+                subscription->port_id, transfer.payload.size);
+
+            const uint8_t* payload_bytes = (const uint8_t*) transfer.payload.data;
+
+            // Interpret the first byte as our test counter (matches TX pattern)
+            if (transfer.payload.size > 0) {
+                uint8_t counter = payload_bytes[0];
+                printf("  Message counter: %u\n", counter);
+            }
+
+            // Print full payload contents
+            printf("  Payload: ");
+            for (size_t i = 0; i < transfer.payload.size; i++) {
+                printf("0x%02X ", payload_bytes[i]);
+            }
+            printf("\n\n");
+
+        } else {
+            printf("canardRxAccept() returned error code %ld\n", (long)result);
+        }
+
+        // ======================================
+
+
+        // Re-check FIFO before next iteration
         r = MCP251XFD_GetFIFOStatus(g_can, MCP251XFD_FIFO1, &rx_fifo_status);
-        if (r != ERR_OK)
-            break;
+        if (r != ERR_OK || !(rx_fifo_status & MCP251XFD_RX_FIFO_NOT_EMPTY))
+            break;  // FIFO is empty or hardware fault
     }
 }
 
