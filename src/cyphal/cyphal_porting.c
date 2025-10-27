@@ -125,6 +125,9 @@ void cyphal_rx_process(CanardInstance* ins)
             }
             printf("\n\n");
 
+            // Deallocate memory
+            ins->memory.deallocate(ins->memory.user_reference, transfer.payload.size, transfer.payload.data);
+
         } else if (result < 0) {
             // It's good practice to log errors
             printf("canardRxAccept() returned error code %ld\n", (long)result);
