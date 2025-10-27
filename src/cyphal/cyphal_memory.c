@@ -18,10 +18,10 @@ static O1HeapInstance* cyphal_heap = NULL;
 
 void cyphal_memory_init(void)
 {
-    printf("Given Space: %d\n", sizeof(cyphal_heap_buffer));
-    printf("Heap Buffer Pointer: %p\n", cyphal_heap_buffer);
-    printf("O1HEAP_ALIGNMENT: %d\n", O1HEAP_ALIGNMENT);
-    printf("Alignment Check: %d\n", (((size_t)cyphal_heap_buffer) % O1HEAP_ALIGNMENT));
+    // printf("Given Space: %d\n", sizeof(cyphal_heap_buffer));
+    // printf("Heap Buffer Pointer: %p\n", cyphal_heap_buffer);
+    // printf("O1HEAP_ALIGNMENT: %d\n", O1HEAP_ALIGNMENT);
+    // printf("Alignment Check: %d\n", (((size_t)cyphal_heap_buffer) % O1HEAP_ALIGNMENT));
 
     cyphal_heap = o1heapInit(cyphal_heap_buffer, sizeof(cyphal_heap_buffer));
 
