@@ -1,5 +1,8 @@
 #include "MCP251XFD.h"
 #include "can.h"
+#include "canard.h"
+#include "cyphal/cyphal_memory.h"
+#include "cyphal/cyphal_porting.h"
 #include "hardware/gpio.h"
 #include "hardware/spi.h"
 #include "pico/stdlib.h"
@@ -126,78 +129,114 @@ int main(void)
 
     print_operation_mode(&can);
 
-    uint8_t frame_counter = 0;
+    // =====================
+    // CYPHAL INITIALIZATION
+    // ---------------------
+
+    // Initialize o1heap
+    cyphal_memory_init();
+
+    // Attach CAN device to Cyphal
+    cyphal_port_init(&can);
+
+    // Create the CanardInstance for this Cyphal node, which
+    // encapsulates all the required functions and data structures
+    // for Cyphal to work.
+    CanardMemoryResource memory = cyphal_memory_resource();
+    CanardInstance ins = canardInit(memory);
+
+    // Initialize a TX queue for outgoing frames
+    struct CanardTxQueue tx_queue = canardTxInit(32, CANARD_MTU_CAN_FD, memory);
+
+    // EXAMPLE NODE ID (subject to change)
+    ins.node_id   = 42;
+
+    // Subscription object
+    static CanardRxSubscription test_sub;
+
+    int32_t sub_result = canardRxSubscribe(
+        &ins,
+        CanardTransferKindMessage,   // Type of transfer: message (broadcast)
+        2468,                        // Subject ID of the message we are subscribing to
+        CANARD_DEFAULT_TRANSFER_ID_TIMEOUT_USEC,
+        CANARD_MTU_CAN_FD,
+        &test_sub);
+
+    if (sub_result < 0) {
+        printf("Subscription failed: %ld\n", (long)sub_result);
+    }
+
+    // =====================
+
+    
+
+    uint8_t message_counter = 0;
 
     for (;;) {
-        // 1. Prepare and send a CAN message
-        uint8_t payload[8] = { frame_counter, 0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE, 0x00 };
-        MCP251XFD_CANMessage message = {
-            .MessageID = 0x123,
-            .ControlFlags = MCP251XFD_CANFD_FRAME | MCP251XFD_NO_SWITCH_BITRATE | MCP251XFD_STANDARD_MESSAGE_ID,
-            .DLC = MCP251XFD_DLC_8BYTE,
-            .PayloadData = payload
+
+        // ====================
+        // SEND TESTING MESSAGE
+        // --------------------
+
+        // Example: simple payload of 3 bytes
+        uint8_t payload[4] = {message_counter++, 0xAA, 0xBB, 0xCC};
+
+        // Build metadata describing this transfer
+        struct CanardTransferMetadata metadata = {
+            .priority       = CanardPriorityNominal,
+            .transfer_kind  = CanardTransferKindMessage,
+            .port_id        = 1234,                  // subject ID
+            .remote_node_id = CANARD_NODE_ID_UNSET,  // broadcast
+            .transfer_id    = 0                      // must increment per subject
         };
 
-        result = MCP251XFD_TransmitMessageToTXQ(&can, &message, true); // `true` to flush
-        if (result == ERR_OK) {
-            printf("Transmitted frame. Counter: %d\n", frame_counter);
-            frame_counter++;
-        } else {
-            printf("Failed to transmit CAN frame. Error: %s\n", ERR_ErrorStrings[result]);
+        // Wrap payload into a CanardPayload
+        struct CanardPayload pl = {
+            .size = sizeof(payload),
+            .data = payload
+        };
+
+        // Push transfer into TX queue
+        uint64_t frames_expired = 0;
+        int32_t result = canardTxPush(&tx_queue, &ins,
+                                    cyphal_port_get_usec() + 1000000,  // 1-second deadline
+                                    &metadata, pl, 0, &frames_expired);
+
+        if (result < 0) {
+            printf("canardTxPush failed: %ld\n", (long)result);
         }
 
-        sleep_ms(1000); // Wait a second before sending the next frame
-        print_error_status(&can);
 
-        // 2. Check if the interrupt fired
-        if (can_message_received || frame_counter % 5 == 0) {
-            can_message_received = false; // Reset the flag
-
-            printf("\n--- Interrupt triggered! Checking for received messages ---\n");
-
-            eMCP251XFD_FIFOstatus rx_fifo_status;
-            result = MCP251XFD_GetFIFOStatus(&can, MCP251XFD_FIFO1, &rx_fifo_status);
-
-            // Keep reading messages as long as the FIFO is not empty
-            while (result == ERR_OK && (rx_fifo_status & MCP251XFD_RX_FIFO_NOT_EMPTY)) {
-                // Prepare to receive the message
-                uint8_t rx_payload[64];
-                uint32_t timestamp;
-                MCP251XFD_CANMessage rx_message;
-                rx_message.PayloadData = rx_payload;
-
-                result = MCP251XFD_ReceiveMessageFromFIFO(&can, &rx_message, MCP251XFD_PAYLOAD_64BYTE, &timestamp, MCP251XFD_FIFO1);
-
-                if (result == ERR_OK) {
-                    printf("    Message Received from FIFO1!\n");
-                    printf("        ID: 0x%lX\n", rx_message.MessageID);
-                    printf("        Timestamp: %lu µs\n", timestamp); // Timestamp is in µs based on prescaler
-
-                    bool isFD = (rx_message.ControlFlags & MCP251XFD_CANFD_FRAME);
-                    uint8_t dlc_bytes = MCP251XFD_DLCToByte(rx_message.DLC, isFD);
-                    printf("        DLC: %d bytes\n", dlc_bytes);
-
-                    printf("        Payload: ");
-                    for (int i = 0; i < dlc_bytes; i++) {
-                        printf("0x%02X ", rx_message.PayloadData[i]);
-                    }
-                    printf("\n\n");
-                } else {
-                    printf("Failed to receive message. Error: %s\n", ERR_ErrorStrings[result]);
-                    break;
-                }
-
-                // Check the status again to see if more messages are in the queue
-                result = MCP251XFD_GetFIFOStatus(&can, MCP251XFD_FIFO1, &rx_fifo_status);
-            }
-            if (!(rx_fifo_status & MCP251XFD_RX_FIFO_NOT_EMPTY)) {
-                printf("RX FIFO1 is empty.\n");
-            }
-
-            MCP251XFD_ClearInterruptEvents(&can, MCP251XFD_INT_RX_EVENT);
-            irq_clear(PIN_CAN_INT);
-
-            printf("--- Done checking ---\n\n");
+        // Send the payload on the bus using the "cyphal_porting" layer
+        struct CanardTxQueueItem* item = canardTxPeek(&tx_queue);
+        while (item != NULL) {
+            cyphal_tx(&item->frame);                 // your hardware send
+            canardTxPop(&tx_queue, item);
+            canardTxFree(&tx_queue, &ins, item);     // new mandatory free call
+            item = canardTxPeek(&tx_queue);
         }
+
+        // ====================
+
+        // ==========================
+        // CHECK FOR RECEIVED MESSAGE
+        // --------------------------
+
+
+        // Check if the interrupt has sent the "message received" flag;
+        // if so, call the "rx_process" from the "cyphal_porting" layer
+        // to receieve the message from the MCP receieve FIFO.
+        if (can_message_received) {
+            can_message_received = false;
+            printf("\n--- RX interrupt triggered ---\n");
+            cyphal_rx_process(&ins);
+            printf("--- RX drain complete ---\n\n");
+        }
+
+        // ==========================
+
+
+        // Delay between loops
+        sleep_ms(500);
     }
 }
