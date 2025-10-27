@@ -1,54 +1,11 @@
-#ifndef CAN_H
-#define CAN_H
-
-#include "hardware/spi.h"
 #include "MCP251XFD.h"
-
-/* ========== MCP251XFD Initialization Helpers ========== */
-
-/**
- * @brief SPI configuration for the Raspberry Pi Pico.
- *
- * This structure holds the information required to configure an SPI
- * interface for use with the HAL driver initialization function.
- * 
- * @typedef PicoSPI
- */
-typedef struct {
-    spi_inst_t* block;
-    uint8_t mosi_pin;
-    uint8_t miso_pin;
-    uint8_t sck_pin;
-    uint8_t cs_pin;
-    uint32_t clock_speed;
-} PicoSPI;
-
-/**
- * @brief Initialize the MCP251XFD CAN device with Raspberry Pi Pico–specific settings.
- *
- * This function configures the MCP251XFD device using the provided SPI interface
- * and applies static configuration values required for operation on the Raspberry Pi Pico.
- *
- * @param[in]  spi_config Pointer to an SPI configuration structure containing pin assignments
- *                        and SPI block information for setting up the interface.
- * @param[out] device     Pointer to the MCP251XFD device state structure. Must be zero-initialized
- *                        before calling this function. On success, it will be populated with
- *                        the driver’s internal state.
- *
- * @return
- * - @ref ERR_OK if the device was successfully initialized.
- * - One of the other @ref eERRORRESULT values if initialization fails.
- *
- * @note The SPI clock frequency must be less than 80% of the MCP251XFD system clock (SYSCLK).
- */
-eERRORRESULT initialize_CAN(PicoSPI *spi_config, MCP251XFD *device);
 
 /* ==========  CAN DRIVERS AND HAL FUNCTIONS   ========== */
 
 /*! @brief MCP251XFD_X get millisecond
-*
-* This function will be called when the driver needs to get current millisecond
-*/
+ *
+ * This function will be called when the driver needs to get current millisecond
+ */
 uint32_t MCP251XFD_GetCurrentMs_Pico(void);
 
 /*! @brief MCP251XFD_X compute CRC16-CMS
@@ -86,6 +43,4 @@ same size
 * @return Returns an #eERRORRESULT value enum
 */
 eERRORRESULT MCP251XFD_InterfaceTransfer_Pico(void *pIntDev, uint8_t chipSelect, uint8_t *txData, uint8_t *rxData,
-                                             size_t size);
-
-#endif /* CAN_H */
+                                              size_t size);

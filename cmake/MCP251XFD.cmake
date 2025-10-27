@@ -1,8 +1,8 @@
 # MCP251XFD.cmake
 # Uses Github Emandhal/MCP251XFD as submodule and loads library as a CMake Lib
 
-set(MCP251XFD_SRC "${CMAKE_CURRENT_SOURCE_DIR}/external/MCP251XFD/MCP251XFD.c")
-set(MCP251XFD_HDR "${CMAKE_CURRENT_SOURCE_DIR}/external/MCP251XFD/MCP251XFD.h")
+set(MCP251XFD_SRC "${CMAKE_SOURCE_DIR}/external/MCP251XFD/MCP251XFD.c")
+set(MCP251XFD_HDR "${CMAKE_SOURCE_DIR}/external/MCP251XFD/MCP251XFD.h")
 
 
 # Create library with single source file
@@ -12,7 +12,7 @@ add_library( MCP251XFD ${MCP251XFD_SRC} )
 target_include_directories(
     MCP251XFD
     PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/MCP251XFD
+    ${CMAKE_SOURCE_DIR}/external/MCP251XFD
 )
 
 # Sets up a CMake variable to specify where the Conf file lives
