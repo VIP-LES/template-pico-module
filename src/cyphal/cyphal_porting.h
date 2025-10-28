@@ -15,8 +15,7 @@
 #define CYPHAL_PORTING_H
 
 #include "canard.h"     // Libcanard API types: CanardFrame, CanardInstance, etc.
-#include "MCP251XFD.h"  // Driver for the CAN controller
-#include "can.h"        // The SPI + driver initialization helpers
+#include "drivers/mcp251xfd.h"        // The SPI + driver initialization helpers
 #include <stdbool.h>
 #include <stddef.h>
 

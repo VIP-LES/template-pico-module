@@ -1,5 +1,6 @@
-#include "MCP251XFD.h"
 #include "drivers/mcp251xfd.h"
+#include "drivers/mcp251xfd/debug.h"
+#include "config.h"
 #include "canard.h"
 #include "cyphal/cyphal_memory.h"
 #include "cyphal/cyphal_porting.h"

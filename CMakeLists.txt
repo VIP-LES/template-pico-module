@@ -47,6 +47,7 @@ add_subdirectory(src/drivers)
 # Add executable. Default name is the project name, version 0.1
 file(GLOB SRC_FILES
     src/*.c
+    src/cyphal/*.c
 )
 
 add_executable(TEMPLATE_PICO ${SRC_FILES})
