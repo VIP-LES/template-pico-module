@@ -39,7 +39,6 @@ project(template-pico-module C CXX ASM)
 pico_sdk_init()
 
 # Initialize the MCP251XFD library
-set(CONF_MCP251XFD_DIR ${CMAKE_SOURCE_DIR}/conf)
 include(libcanard)
 include(o1heap)
 add_subdirectory(src/drivers)

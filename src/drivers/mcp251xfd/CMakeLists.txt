@@ -4,6 +4,7 @@
 cmake_minimum_required(VERSION 3.15)
 
 # Bring in exernal/MCP251XFD library
+set(CONF_MCP251XFD_DIR ${CMAKE_CURRENT_LIST_DIR})
 include(MCP251XFD)
 
 add_library(driver_mcp251xfd mcp251xfd.c platform.c)
