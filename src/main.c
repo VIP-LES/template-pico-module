@@ -1,5 +1,5 @@
 #include "MCP251XFD.h"
-#include "can.h"
+#include "drivers/mcp251xfd.h"
 #include "canard.h"
 #include "cyphal/cyphal_memory.h"
 #include "cyphal/cyphal_porting.h"
@@ -8,14 +8,6 @@
 #include "pico/stdlib.h"
 #include <stdint.h>
 #include <stdio.h>
-
-#define SPI_CLK_SPEED 1000000
-#define SPI_PORT spi0
-#define PIN_MISO 4
-#define PIN_CS 5
-#define PIN_SCK 2
-#define PIN_MOSI 3
-#define PIN_CAN_INT 6 // GPIO pin connected to the MCP251XFD INT1 pin
 
 // A volatile flag to be set by the ISR
 volatile bool can_message_received = false;
@@ -28,74 +20,10 @@ void can_irq_handler(uint gpio, uint32_t events)
     }
 }
 
-void print_operation_mode(MCP251XFD* can)
-{
-    eMCP251XFD_OperationMode mode;
-    eERRORRESULT result = MCP251XFD_GetActualOperationMode(can, &mode);
-    if (result == ERR_OK) {
-        printf("Current Operation Mode: ");
-        switch (mode) {
-        case MCP251XFD_NORMAL_CANFD_MODE:
-            printf("Normal CAN-FD\n");
-            break;
-        case MCP251XFD_SLEEP_MODE:
-            printf("Sleep\n");
-            break;
-        case MCP251XFD_INTERNAL_LOOPBACK_MODE:
-            printf("Internal Loopback\n");
-            break;
-        case MCP251XFD_LISTEN_ONLY_MODE:
-            printf("Listen Only\n");
-            break;
-        case MCP251XFD_CONFIGURATION_MODE:
-            printf("Configuration\n");
-            break;
-        case MCP251XFD_EXTERNAL_LOOPBACK_MODE:
-            printf("External Loopback\n");
-            break;
-        case MCP251XFD_NORMAL_CAN20_MODE:
-            printf("Normal CAN 2.0\n");
-            break;
-        case MCP251XFD_RESTRICTED_OPERATION_MODE:
-            printf("Restricted Operation\n");
-            break;
-        default:
-            printf("Unknown\n");
-            break;
-        }
-    } else {
-        printf("Failed to get operation mode.\n");
-    }
-}
-
-void print_error_status(MCP251XFD* can)
-{
-    uint8_t tec, rec;
-    eMCP251XFD_TXRXErrorStatus status;
-
-    if (MCP251XFD_GetTransmitReceiveErrorCountAndStatus(can, &tec, &rec, &status) == ERR_OK) {
-        printf("TEC: %3u | REC: %3u | Status: ", tec, rec);
-        if (status & MCP251XFD_TX_BUS_OFF_STATE)
-            printf("TX_BUS_OFF ");
-        if (status & MCP251XFD_TX_BUS_PASSIVE_STATE)
-            printf("TX_PASSIVE ");
-        if (status & MCP251XFD_TX_WARNING_STATE)
-            printf("TX_WARNING ");
-        if (status & MCP251XFD_RX_BUS_PASSIVE_STATE)
-            printf("RX_PASSIVE ");
-        if (status & MCP251XFD_RX_WARNING_STATE)
-            printf("RX_WARNING ");
-        if (status == 0)
-            printf("OK");
-        printf("\n");
-    }
-}
-
 int main(void)
 {
     stdio_init_all();
-
-    while (!stdio_usb_connected())
+    while(!stdio_usb_connected())
         sleep_ms(100);
 
     // Setup GPIO interrupt for receiving CAN messages
@@ -106,17 +34,9 @@ int main(void)
     gpio_set_irq_enabled_with_callback(PIN_CAN_INT, GPIO_IRQ_EDGE_FALL, true, &can_irq_handler);
 
     printf("Starting MCP2518FD test...\n");
-    PicoSPI spi = {
-        .block = SPI_PORT,
-        .miso_pin = PIN_MISO,
-        .mosi_pin = PIN_MOSI,
-        .sck_pin = PIN_SCK,
-        .cs_pin = PIN_CS,
-        .clock_speed = SPI_CLK_SPEED
-    };
     MCP251XFD can;
-    eERRORRESULT result = initialize_CAN(&spi, &can);
-    const char* reason = ERR_ErrorStrings[result];
+    eERRORRESULT result = initialize_CAN(&can_config, &can);
+    const char* reason = mcp251xfd_debug_error_reason(result);
 
     printf("Result of the initialization: %s\n", reason);
 
@@ -127,7 +47,7 @@ int main(void)
         }
     }
 
-    print_operation_mode(&can);
+    mcp251xfd_debug_print_operation_mode(&can);
 
     // =====================
     // CYPHAL INITIALIZATION
