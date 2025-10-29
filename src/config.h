@@ -1,7 +1,7 @@
 #pragma once
 #include "drivers/mcp251xfd.h"
 
-#define PIN_CAN_INT 6 // GPIO pin connected to the MCP251XFD INT1 pin
+#define PIN_CAN_INT 6 // GPIO pin connected to the MCP251XFD INT pin
 
 MCP251XFD_FIFO fifo_configs[] = {
     {
@@ -15,7 +15,7 @@ MCP251XFD_FIFO fifo_configs[] = {
     },
     {
         .Name = MCP251XFD_FIFO1,
-        .Size = MCP251XFD_FIFO_4_MESSAGE_DEEP, // MCP251XFD_FIFO_16_MESSAGE_DEEP,
+        .Size = MCP251XFD_FIFO_16_MESSAGE_DEEP,
         .Payload = MCP251XFD_PAYLOAD_64BYTE,
         .Direction = MCP251XFD_RECEIVE_FIFO,
         .ControlFlags = MCP251XFD_FIFO_ADD_TIMESTAMP_ON_RX,
@@ -59,3 +59,9 @@ PicoMCPConfig can_config = {
     .filter_configs = filter_configs,
     .num_filters = count_of(filter_configs)
 };
+
+// CAN DEFINITIONS - SUBJECT TO MOVE
+#define CAN_ID_RADIO_MODULE 11
+#define CAN_ID_SENSOR_MODULE 12
+
+#define CAN_TOPIC_BARO_PRESSURE 135
