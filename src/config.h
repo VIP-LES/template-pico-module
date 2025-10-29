@@ -24,14 +24,12 @@ MCP251XFD_FIFO fifo_configs[] = {
 };
 
 MCP251XFD_Filter filter_configs[] = {
-    {
-        .Filter = MCP251XFD_FILTER0,
+    { .Filter = MCP251XFD_FILTER0,
         .EnableFilter = true,
         .AcceptanceID = MCP251XFD_ACCEPT_ALL_MESSAGES,
         .AcceptanceMask = MCP251XFD_ACCEPT_ALL_MESSAGES,
         .Match = MCP251XFD_MATCH_SID_EID,
-        .PointTo = MCP251XFD_FIFO1
-    }
+        .PointTo = MCP251XFD_FIFO1 }
 };
 
 PicoMCPConfig can_config = {
@@ -46,9 +44,9 @@ PicoMCPConfig can_config = {
     .XtalFreq = 40000000, // 40 MHz
     .OscFreq = 0,
     .SysclkConfig = MCP251XFD_SYSCLK_IS_CLKIN, // Our crystal needs no multiplication,
-    .NominalBitrate = 1000000,                 // 1 MHz,
-    .DataBitrate = 4000000,                    // 4MHz, increase if needed.
-    .Bandwidth = MCP251XFD_NO_DELAY,           // No delay between sending packets. May cause problems with many messages,
+    .NominalBitrate = 1000000, // 1 MHz,
+    .DataBitrate = 4000000, // 4MHz, increase if needed.
+    .Bandwidth = MCP251XFD_NO_DELAY, // No delay between sending packets. May cause problems with many messages,
     .ControlFlags = MCP251XFD_CAN_RESTRICTED_MODE_ON_ERROR | MCP251XFD_CAN_ESI_REFLECTS_ERROR_STATUS | MCP251XFD_CAN_RESTRICTED_RETRANS_ATTEMPTS | MCP251XFD_CANFD_BITRATE_SWITCHING_ENABLE | MCP251XFD_CAN_PROTOCOL_EXCEPT_AS_FORM_ERROR | MCP251XFD_CANFD_USE_ISO_CRC | MCP251XFD_CANFD_DONT_USE_RRS_BIT_AS_SID11,
     .InterruptFlags = MCP251XFD_INT_RX_EVENT,
     .operation_mode = MCP251XFD_NORMAL_CANFD_MODE,
