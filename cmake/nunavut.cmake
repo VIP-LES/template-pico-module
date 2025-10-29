@@ -5,7 +5,7 @@
 #       DSDL_LOOKUP_DIRS ${PROJECT_SOURCE_DIR}/external/publictypes/uavcan
 #   )
 
-find_program(NNVG_EXE nnvg PATHS "$ENV{HOME}/.local/bin" NO_DEFAULT_PATH)
+find_program(NNVG_EXE nnvg PATHS "$ENV{HOME}/.local/bin" "${CMAKE_SOURCE_DIR}/.venv/bin" NO_DEFAULT_PATH)
 find_program(NNVG_EXE nnvg)
 if(NOT NNVG_EXE)
     message(FATAL_ERROR "nnvg not found. Install with: pip install nunavut")
