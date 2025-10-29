@@ -69,6 +69,20 @@ int main(void)
     // TEST NODE ID (subject to change)
     can.node_id = CAN_ID_SENSOR_MODULE;
 
+    
+    // TODO
+    // curently the mainloop system does not indicate, log, or respond if there is a clog of messages trying to be sent
+    // out. if a device was the only one in the bus, (i.e. TX_PASSIVE), then the txq will fill up and silently drop any 
+    // messages after those first 8 frames. While there isnt much to do about handling that, we should note it in the log.
+    // Some form of structured cli logging might help. 
+
+    // A good example of this is to turn on one device, let it fill for 10 seconds, then connect the other device. 
+    // You'll see that it will dump it's first messages onto the bus immediately and then resume with new messages.
+    // This feels like it needs improvement.
+
+    // Easiest solution is to check the return value of publish_heartbeat
+
+
     // Initialize a TX queue for outgoing frames
     struct CanardTxQueue tx_queue = canardTxInit(32, CANARD_MTU_CAN_FD, memory);
 
