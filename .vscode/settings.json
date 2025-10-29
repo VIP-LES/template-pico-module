@@ -42,6 +42,7 @@
     "files.associations": {
         ".fantomasignore": "ignore",
         "stdio.h": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "canard.h": "c"
     }
 }

@@ -1,4 +1,5 @@
 #include "drivers/canard.h"
+#include "../../log.h"
 
 static inline uint8_t bytes_to_dlc(uint8_t n)
 {
@@ -19,15 +20,16 @@ static inline uint8_t bytes_to_dlc(uint8_t n)
     return 15; // 64 bytes
 }
 
-int8_t canard_mcp_tx_frame(void *const mcp251xfd, const CanardMicrosecond deadline_usec, struct CanardMutableFrame *const frame) {
-    (void) deadline_usec; // Not currently using the deadline. a timestamp for the frame will be injected by the MCP251XFD
-    MCP251XFD *dev = (MCP251XFD*) mcp251xfd;
+int8_t canard_mcp_tx_frame(void* const mcp251xfd, const CanardMicrosecond deadline_usec, struct CanardMutableFrame* const frame)
+{
+    (void)deadline_usec; // Not currently using the deadline. a timestamp for the frame will be injected by the MCP251XFD
+    MCP251XFD* dev = (MCP251XFD*)mcp251xfd;
 
     MCP251XFD_CANMessage msg = {
         .MessageID = frame->extended_can_id,
         .DLC = bytes_to_dlc(frame->payload.size),
         .ControlFlags = MCP251XFD_CANFD_FRAME | MCP251XFD_EXTENDED_MESSAGE_ID,
-        .PayloadData = (uint8_t*) frame->payload.data
+        .PayloadData = (uint8_t*)frame->payload.data
     };
 
     eERRORRESULT result;
@@ -36,17 +38,19 @@ int8_t canard_mcp_tx_frame(void *const mcp251xfd, const CanardMicrosecond deadli
     if (result != ERR_OK)
         return -result; // negate MCP error to make negative
 
-    if (!(txq_status & MCP251XFD_TX_FIFO_NOT_FULL))
+    if (!(txq_status & MCP251XFD_TX_FIFO_NOT_FULL)) {
+        LOG_WARN("CAN TX FIFO is full. Frame transmission delayed.");
         return 0; // Transmit FIFO is full. Hold off on this frame.
+    }
 
-    
     // There are arguments to be made that this should not be flushed immediately, and instead a flush should occur
     // inside the mainloop or other service routine. It works for now, but may not be efficient.
     result = MCP251XFD_TransmitMessageToTXQ(dev, &msg, true);
-    if (result != ERR_OK)
+    if (result != ERR_OK) {
+        LOG_ERROR("MCP251XFD_TransmitMessageToTXQ failed with code: %d", result);
         return -result;
+    }
     return 1; // SUCCESS
-
 
     // Possible return values:
     // Zero - Could not send frame yet, but didn't fail. This would be used if the TXQ is full
@@ -54,7 +58,9 @@ int8_t canard_mcp_tx_frame(void *const mcp251xfd, const CanardMicrosecond deadli
     // Negative - Failure, all frames for this transport will be dropped.
 }
 
-uint32_t canard_mcp_rx_process(MCP251XFD *dev, struct CanardInstance *can) {
+uint32_t canard_mcp_rx_process(MCP251XFD* dev, struct CanardInstance* can)
+{
+    uint32_t frame_count = 0;
     eERRORRESULT result;
     eMCP251XFD_FIFOstatus rx_status;
     // FIFO1 is hardcoded to a single RX fifo. This should be drawn from config, somehow
@@ -62,35 +68,39 @@ uint32_t canard_mcp_rx_process(MCP251XFD *dev, struct CanardInstance *can) {
     result = MCP251XFD_GetFIFOStatus(dev, MCP251XFD_FIFO1, &rx_status);
     if (result != ERR_OK)
         return result;
+
     if (!(rx_status & MCP251XFD_RX_FIFO_NOT_EMPTY))
         return result;
 
-    do
-    {
+    do {
         MCP251XFD_CANMessage msg;
         uint8_t payload[64];
         uint32_t timestamp_us = 0;
         msg.PayloadData = payload;
 
         result = MCP251XFD_ReceiveMessageFromFIFO(dev, &msg, MCP251XFD_PAYLOAD_64BYTE, &timestamp_us, MCP251XFD_FIFO1);
-        if (result != ERR_OK)
+        if (result != ERR_OK) {
+            LOG_ERROR("Failed to receive message from FIFO, error: %d", result); // <-- New log
             break;
+        }
+
+        frame_count++;
 
         struct CanardFrame rx_frame = {
             .extended_can_id = msg.MessageID,
             .payload = {
                 .data = msg.PayloadData,
-                .size = MCP251XFD_DLCToByte(msg.DLC, true)
-            }
+                .size = MCP251XFD_DLCToByte(msg.DLC, true) }
         };
 
         struct CanardRxTransfer transfer;
-        struct CanardRxSubscription *subscription;
+        struct CanardRxSubscription* subscription;
         result = canardRxAccept(can, timestamp_us, &rx_frame, 0, &transfer, &subscription);
 
         if (result == 1) {
             // call subscription handler
-            CanardSubscriptionCallback *callback = (CanardSubscriptionCallback *) subscription->user_reference;
+            LOG_INFO("Accepted CAN transfer for port_id %d", transfer.metadata.port_id);
+            CanardSubscriptionCallback* callback = (CanardSubscriptionCallback*)subscription->user_reference;
             callback->handler(&transfer, callback->user_reference);
 
             can->memory.deallocate(can->memory.user_reference, transfer.payload.allocated_size, transfer.payload.data);
@@ -99,14 +109,19 @@ uint32_t canard_mcp_rx_process(MCP251XFD *dev, struct CanardInstance *can) {
             // It is possible to statically prove that an out-of-memory will never occur for a given application if
             // the heap is sized correctly; for background, refer to the Robson's Proof and the documentation for O1Heap.
             // Reception of an invalid frame is NOT an error.
+            LOG_ERROR("canardRxAccept failed with error: %d. Possible OOM.", result);
             break;
         }
 
         // Check if more frames are available
         result = MCP251XFD_GetFIFOStatus(dev, MCP251XFD_FIFO1, &rx_status);
         if (result != ERR_OK)
-            break;
+            LOG_ERROR("canardRxAccept failed with error: %d. Possible OOM.", result);
+        break;
 
     } while (rx_status & MCP251XFD_RX_FIFO_NOT_EMPTY);
+    if (frame_count > 0) {
+        LOG_INFO("Processed %lu incoming CAN frames.", frame_count);
+    }
     return result;
 }

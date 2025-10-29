@@ -51,8 +51,10 @@ int main(void)
     stdio_init_all();
     while (!stdio_usb_connected())
         sleep_ms(100);
+    LOG_INFO("USB STDIO Connected. Starting application.");
 
     init_can_rx_irq(PIN_CAN_INT);
+    LOG_INFO("CAN RX IRQ initialized on pin %d", PIN_CAN_INT);
 
     LOG_INFO("Starting MCP2518FD test...");
     MCP251XFD candev;
@@ -69,6 +71,7 @@ int main(void)
     struct CanardInstance can = canardInit(memory);
     // TEST NODE ID (subject to change)
     can.node_id = CAN_ID_SENSOR_MODULE;
+    LOG_INFO("LibCanard instance created with node ID %d", can.node_id);
 
     // TODO
     // curently the mainloop system does not indicate, log, or respond if there is a clog of messages trying to be sent
@@ -97,11 +100,20 @@ int main(void)
         uavcan_node_Heartbeat_1_0_EXTENT_BYTES_,
         CANARD_DEFAULT_TRANSFER_ID_TIMEOUT_USEC,
         &sub_heartbeat);
+
+    if (sub_result < 0) {
+        LOG_ERROR("Failed to subscribe to Heartbeat messages, message %d", sub_result);
+    } else {
+        LOG_INFO("Subscribed to Heartbeat messages");
+    }
+
     sub_heartbeat.user_reference = &cb_heartbeat;
 
     // Main Loop
     absolute_time_t last_heartbeat = 0;
 #define HEARTBEAT_INTERVAL_MS 1000
+
+    LOG_INFO("Entering main loop...");
     while (true) {
 
         if (can_rx_pending) {
@@ -111,6 +123,9 @@ int main(void)
         }
         // Pull frames from the queue and send to our interface driver
         int pollin_result = canardTxPoll(&tx_queue, &can, to_us_since_boot(get_absolute_time()), &candev, canard_mcp_tx_frame, NULL, NULL);
+        if (pollin_result < 0) {
+            LOG_ERROR("canardTxPoll failed with error: %d", pollin_result);
+        }
         // Should check this output maybe?
         if (get_absolute_time() > last_heartbeat) {
             publish_heartbeat(&tx_queue, &can, current_health, current_mode);

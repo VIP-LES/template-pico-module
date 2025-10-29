@@ -1,8 +1,9 @@
+#include "../../log.h"
 #include "MCP251XFD.h"
 #include "config.h"
 #include "hardware/spi.h"
-#include "pico/stdlib.h"
 #include "hardware/sync.h"
+#include "pico/stdlib.h"
 
 #define SPI_TIMEOUT_US 5000
 
@@ -15,15 +16,13 @@ uint32_t MCP251XFD_GetCurrentMs_Pico(void)
 
 // Polynomial: 0x8005 (reflected 0xA001), Init = 0xFFFF, XOR out = 0x0000
 // Taken from internet. I don't think we'll even use the CRC style so just lgtm.
-uint16_t crc16_cms(const uint8_t *data, size_t size)
+uint16_t crc16_cms(const uint8_t* data, size_t size)
 {
     uint16_t crc = 0xFFFF;
 
-    for (size_t i = 0; i < size; i++)
-    {
+    for (size_t i = 0; i < size; i++) {
         crc ^= data[i];
-        for (int j = 0; j < 8; j++)
-        {
+        for (int j = 0; j < 8; j++) {
             if (crc & 0x0001)
                 crc = (crc >> 1) ^ 0xA001; // 0xA001 is the reflected form of 0x8005
             else
@@ -34,16 +33,16 @@ uint16_t crc16_cms(const uint8_t *data, size_t size)
     return crc;
 }
 
-uint16_t MCP251XFD_ComputeCRC16_Pico(const uint8_t *data, size_t size)
+uint16_t MCP251XFD_ComputeCRC16_Pico(const uint8_t* data, size_t size)
 {
     return crc16_cms(data, size);
 }
 
-eERRORRESULT MCP251XFD_InterfaceInit_Pico(void *pIntDev, uint8_t chipSelect, const uint32_t sckFreq)
+eERRORRESULT MCP251XFD_InterfaceInit_Pico(void* pIntDev, uint8_t chipSelect, const uint32_t sckFreq)
 {
     if (pIntDev == NULL)
         return ERR__SPI_PARAMETER_ERROR;
-    PicoSPI *spi = (PicoSPI *)pIntDev;
+    PicoSPI* spi = (PicoSPI*)pIntDev;
 
     // Initialize Pico SPI and pins
     spi_init(spi->block, sckFreq);
@@ -60,8 +59,8 @@ eERRORRESULT MCP251XFD_InterfaceInit_Pico(void *pIntDev, uint8_t chipSelect, con
     return ERR_OK;
 }
 
-eERRORRESULT MCP251XFD_InterfaceTransfer_Pico(void *pIntDev, uint8_t chipSelect, uint8_t *txData, uint8_t *rxData,
-                                              size_t size)
+eERRORRESULT MCP251XFD_InterfaceTransfer_Pico(void* pIntDev, uint8_t chipSelect, uint8_t* txData, uint8_t* rxData,
+    size_t size)
 {
     if (pIntDev == NULL)
         return ERR__SPI_PARAMETER_ERROR;
@@ -69,7 +68,7 @@ eERRORRESULT MCP251XFD_InterfaceTransfer_Pico(void *pIntDev, uint8_t chipSelect,
         return ERR__SPI_PARAMETER_ERROR;
 
     // Cast from config ptr
-    PicoSPI *spi = (PicoSPI *)pIntDev;
+    PicoSPI* spi = (PicoSPI*)pIntDev;
 
     // Disable interrupts during transfer process
     uint32_t irqs = save_and_disable_interrupts();
@@ -85,16 +84,14 @@ eERRORRESULT MCP251XFD_InterfaceTransfer_Pico(void *pIntDev, uint8_t chipSelect,
     // The protocol for the MCP251X family of chips uses SPI as a direct
     // memory bus access for RAM, so this is the lowest level of data.
 
-    for (int i = 0; i < size; i++)
-    {
+    for (int i = 0; i < size; i++) {
 
         absolute_time_t stop_time = make_timeout_time_us(SPI_TIMEOUT_US);
-        while (!spi_is_writable(spi->block))
-        {
-            if (get_absolute_time() >= stop_time)
-            {
+        while (!spi_is_writable(spi->block)) {
+            if (get_absolute_time() >= stop_time) {
                 gpio_put(chipSelect, 1);
                 restore_interrupts(irqs);
+                LOG_ERROR("SPI write timeout on cs_pin %d", chipSelect);
                 return ERR__SPI_TIMEOUT;
             }
         }
@@ -103,12 +100,11 @@ eERRORRESULT MCP251XFD_InterfaceTransfer_Pico(void *pIntDev, uint8_t chipSelect,
         spi_get_hw(spi->block)->dr = *txData++;
 
         stop_time = make_timeout_time_us(SPI_TIMEOUT_US);
-        while (!spi_is_readable(spi->block))
-        {
-            if (get_absolute_time() >= stop_time)
-            {
+        while (!spi_is_readable(spi->block)) {
+            if (get_absolute_time() >= stop_time) {
                 gpio_put(chipSelect, 1);
                 restore_interrupts(irqs);
+                LOG_ERROR("SPI read timeout on cs_pin %d", chipSelect);
                 return ERR__SPI_TIMEOUT;
             }
         }
