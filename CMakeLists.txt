@@ -38,19 +38,32 @@ project(template-pico-module C CXX ASM)
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
-# Initialize the MCP251XFD library
-include(libcanard)
-include(o1heap)
+include(nunavut)
 add_subdirectory(src/drivers)
 
 
 # Add executable. Default name is the project name, version 0.1
 file(GLOB SRC_FILES
     src/*.c
-    src/cyphal/*.c
 )
 
 add_executable(TEMPLATE_PICO ${SRC_FILES})
+
+
+cyphal_generate_types(
+    TARGET TEMPLATE_PICO
+    DSDL_DIR ${PROJECT_SOURCE_DIR}/external/public_regulated_data_types/uavcan
+)
+
+# Generate reg types — reg depends on uavcan, so pass uavcan as lookup
+cyphal_generate_types(
+    TARGET TEMPLATE_PICO
+    DSDL_DIR ${PROJECT_SOURCE_DIR}/external/public_regulated_data_types/reg
+    DSDL_LOOKUP_DIRS ${PROJECT_SOURCE_DIR}/external/public_regulated_data_types/uavcan
+)
+
+
+
 
 pico_set_program_name(TEMPLATE_PICO "Pico module template")
 pico_set_program_version(TEMPLATE_PICO "0.1")
@@ -62,10 +75,8 @@ pico_enable_stdio_usb(TEMPLATE_PICO 1)
 # Add required template libraries
 target_link_libraries(TEMPLATE_PICO
         pico_stdlib
-        hardware_spi
         driver_mcp251xfd
-        libcanard
-        o1heap
+        driver_canard
 )
 
 # Add the standard include files to the build
