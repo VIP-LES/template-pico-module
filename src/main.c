@@ -1,6 +1,7 @@
 #include "canard.h"
 #include "canbus.h"
 #include "config.h"
+#include "interrupt.h"
 #include "drivers/canard.h"
 #include "drivers/mcp251xfd.h"
 #include "drivers/mcp251xfd/debug.h"
@@ -8,24 +9,6 @@
 #include "pico/stdlib.h"
 
 #include <uavcan/node/Heartbeat_1_0.h>
-
-// Service interrupts and flags
-static int can_rx_irq_pin = -1;
-volatile bool can_rx_pending = false;
-void gpio_irq(uint gpio, uint32_t events)
-{
-    if (gpio == PIN_CAN_INT && (events & GPIO_IRQ_EDGE_FALL)) {
-        can_rx_pending = true;
-    }
-}
-void init_can_rx_irq(uint pin)
-{
-    can_rx_irq_pin = pin;
-    gpio_init(pin);
-    gpio_set_dir(pin, GPIO_IN);
-    gpio_pull_up(pin);
-    gpio_set_irq_enabled_with_callback(PIN_CAN_INT, GPIO_IRQ_EDGE_FALL, true, gpio_irq);
-}
 
 static void on_heartbeat(const struct CanardRxTransfer* transfer, void* user_reference)
 {
@@ -116,10 +99,10 @@ int main(void)
     LOG_INFO("Entering main loop...");
     while (true) {
 
-        if (can_rx_pending) {
+        if (can_rx_pending()) {
             // read messages from can and call handlers for subscriptions
             canard_mcp_rx_process(&candev, &can);
-            can_rx_pending = false;
+            can_rx_pending_reset();
         }
         // Pull frames from the queue and send to our interface driver
         int pollin_result = canardTxPoll(&tx_queue, &can, to_us_since_boot(get_absolute_time()), &candev, canard_mcp_tx_frame, NULL, NULL);
