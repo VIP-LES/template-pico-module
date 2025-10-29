@@ -1,1 +1,2 @@
 add_subdirectory(mcp251xfd)
+add_subdirectory(canard)
