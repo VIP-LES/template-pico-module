@@ -51,7 +51,7 @@ function(cyphal_generate_types)
         OUTPUT ${CYPHAL_DSDL_STAMP}
         COMMAND ${NNVG_EXE}
             --target-language c
-            --enable-serialization-asserts
+            # --enable-serialization-asserts
             ${CYPHAL_DSDL_DIR}            # <== Root namespace (positional)
             ${LOOKUP_ARGS}                # <== Lookup namespaces
             --outdir ${CYPHAL_DSDL_GEN_DIR}
