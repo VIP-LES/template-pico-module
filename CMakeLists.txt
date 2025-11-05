@@ -40,6 +40,7 @@ pico_sdk_init()
 
 include(nunavut)
 add_subdirectory(src/drivers)
+add_subdirectory(external/pico-pmsa003i)
 
 
 # Add executable. Default name is the project name, version 0.1
@@ -77,6 +78,7 @@ target_link_libraries(TEMPLATE_PICO
         pico_stdlib
         driver_mcp251xfd
         driver_canard
+        pico_pmsa003i
 )
 
 # Add the standard include files to the build
