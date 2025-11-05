@@ -80,7 +80,7 @@ uint32_t canard_mcp_rx_process(MCP251XFD* dev, struct CanardInstance* can)
 
         result = MCP251XFD_ReceiveMessageFromFIFO(dev, &msg, MCP251XFD_PAYLOAD_64BYTE, &timestamp_us, MCP251XFD_FIFO1);
         if (result != ERR_OK) {
-            LOG_ERROR("Failed to receive message from FIFO, error: %d", result); // <-- New log
+            LOG_ERROR("Failed to receive message from FIFO, error: %d", result);
             break;
         }
 

@@ -1,12 +1,11 @@
 #include "canbus.h"
-#include "log.h"
+#include "config.h"
 #include "drivers/canard.h"
 #include "drivers/canard/memory.h"
 #include "drivers/mcp251xfd/debug.h"
+#include "log.h"
 #include "pico/stdlib.h"
-#include "config.h"
 #include <uavcan/node/Heartbeat_1_0.h>
-
 
 static MCP251XFD g_candev;
 static struct CanardInstance g_can;
@@ -14,16 +13,17 @@ static struct CanardTxQueue g_tx_queue;
 static uavcan_node_Health_1_0 g_health = { .value = uavcan_node_Health_1_0_NOMINAL };
 static uavcan_node_Mode_1_0 g_mode = { .value = uavcan_node_Mode_1_0_INITIALIZATION };
 
-
 // Service interrupts and flags
 static int can_rx_irq_pin = -1;
 volatile bool can_rx_pending = false;
-void gpio_irq(uint gpio, uint32_t events) {
+void gpio_irq(uint gpio, uint32_t events)
+{
     if (gpio == PIN_CAN_INT && (events & GPIO_IRQ_EDGE_FALL)) {
         can_rx_pending = true;
     }
 }
-void init_can_rx_irq(uint pin) {
+void init_can_rx_irq(uint pin)
+{
     can_rx_irq_pin = pin;
     gpio_init(pin);
     gpio_set_dir(pin, GPIO_IN);
@@ -31,11 +31,11 @@ void init_can_rx_irq(uint pin) {
     gpio_set_irq_enabled_with_callback(PIN_CAN_INT, GPIO_IRQ_EDGE_FALL, true, gpio_irq);
 }
 
-
-CanbusResult initialize_canbus() {
+CanbusResult initialize_canbus()
+{
     init_can_rx_irq(PIN_CAN_INT);
     eERRORRESULT result = initialize_CAN(&can_config, &g_candev);
-    const char *reason = mcp251xfd_debug_error_reason(result);
+    const char* reason = mcp251xfd_debug_error_reason(result);
     LOG_INFO("CAN initialization result: %s", reason);
     if (result != ERR_OK) {
         LOG_FATAL("CAN initialization failed.");
@@ -44,7 +44,7 @@ CanbusResult initialize_canbus() {
     canard_memory_init();
     struct CanardMemoryResource memory = canard_memory_resource();
     g_can = canardInit(memory);
-    g_can.node_id = CAN_ID_SENSOR_MODULE;
+    g_can.node_id = CAN_ID_RADIO_MODULE; // FIXME: KEEP DIFFERENT ON DIFFERENT BOARDS
     LOG_INFO("LibCanard instance created with node ID %d", g_can.node_id);
 
     // Initialize a TX queue for outgoing frames
@@ -53,19 +53,22 @@ CanbusResult initialize_canbus() {
     return CANBUS_OK;
 }
 
-void canbus_set_node_health(uint8_t health) {
+void canbus_set_node_health(uint8_t health)
+{
     g_health.value = health;
 }
-void canbus_set_node_mode(uint8_t mode) {
+void canbus_set_node_mode(uint8_t mode)
+{
     g_mode.value = mode;
 }
 
-void canbus_task() {
+void canbus_task()
+{
     static absolute_time_t heartbeat_due = 0;
 
     if (can_rx_pending) {
-            canard_mcp_rx_process(&g_candev, &g_can);
-            can_rx_pending = false;
+        canard_mcp_rx_process(&g_candev, &g_can);
+        can_rx_pending = false;
     }
 
     int poll = canardTxPoll(&g_tx_queue, &g_can, to_us_since_boot(get_absolute_time()), &g_candev, canard_mcp_tx_frame, NULL, NULL);
@@ -86,7 +89,8 @@ void canbus_task() {
     }
 }
 
-CanbusResult publish_heartbeat(struct CanardTxQueue* const txq, const struct CanardInstance* can, uavcan_node_Health_1_0 health, uavcan_node_Mode_1_0 mode) {
+CanbusResult publish_heartbeat(struct CanardTxQueue* const txq, const struct CanardInstance* can, uavcan_node_Health_1_0 health, uavcan_node_Mode_1_0 mode)
+{
     static uint8_t heartbeat_tid = 0;
     absolute_time_t now = get_absolute_time();
     absolute_time_t deadline = make_timeout_time_ms(500);
