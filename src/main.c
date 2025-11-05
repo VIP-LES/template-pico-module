@@ -8,7 +8,8 @@
 
 #include <uavcan/node/Mode_1_0.h>
 
-int main() {
+int main()
+{
     // --- INITIALIZE MODULE ---
     stdio_init_all();
 
@@ -16,6 +17,10 @@ int main() {
     while (!stdio_usb_connected())
         sleep_ms(100);
     LOG_INFO("USB STDIO Connected. Starting application.");
+
+    if (initialize_canbus() != CANBUS_OK) {
+        LOG_FATAL("Failed to initialize CAN bus. Halting.");
+    }
 
     // After finishing initialization, set our mode to operational
     canbus_set_node_mode(uavcan_node_Mode_1_0_OPERATIONAL);
