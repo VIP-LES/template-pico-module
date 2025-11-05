@@ -31,6 +31,8 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import)
 
+include(bmp3_sensor_api)
+
 # ====================================================================================
 
 project(template-pico-module C CXX ASM)
@@ -77,6 +79,7 @@ target_link_libraries(TEMPLATE_PICO
         pico_stdlib
         driver_mcp251xfd
         driver_canard
+        driver_instruments
 )
 
 # Add the standard include files to the build

@@ -1,5 +1,7 @@
 #include "config.h"
 
+i2c_inst_t* i2c_bus_inst = i2c0;
+
 MCP251XFD_FIFO fifo_configs[] = {
     {
         .Name = MCP251XFD_TXQ,

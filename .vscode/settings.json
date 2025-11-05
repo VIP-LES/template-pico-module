@@ -43,6 +43,10 @@
         ".fantomasignore": "ignore",
         "stdio.h": "c",
         "stdlib.h": "c",
-        "canard.h": "c"
+        "canard.h": "c",
+        "config.h": "c",
+        "bmp3_sensor.h": "c",
+        "log.h": "c",
+        "mcp251xfd.h": "c"
     }
 }

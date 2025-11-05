@@ -10,6 +10,12 @@
 [submodule "external/public_regulated_data_types"]
 	path = external/public_regulated_data_types
 	url = https://github.com/OpenCyphal/public_regulated_data_types.git
+<<<<<<< HEAD
 [submodule "external/pico-pmsa003i"]
 	path = external/pico-pmsa003i
 	url = https://github.com/VIP-LES/pico-pmsa003i
+=======
+[submodule "external/BMP3_SensorAPI"]
+	path = external/BMP3_SensorAPI
+	url = https://github.com/boschsensortec/BMP3_SensorAPI.git
+>>>>>>> 752e9ba (Saving work: does not compile)

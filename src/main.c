@@ -8,7 +8,8 @@
 
 #include <uavcan/node/Mode_1_0.h>
 
-int main() {
+int main()
+{
     // --- INITIALIZE MODULE ---
     stdio_init_all();
 
@@ -17,6 +18,8 @@ int main() {
         sleep_ms(100);
     LOG_INFO("USB STDIO Connected. Starting application.");
 
+    instruments_init();
+
     // After finishing initialization, set our mode to operational
     canbus_set_node_mode(uavcan_node_Mode_1_0_OPERATIONAL);
 
@@ -24,6 +27,7 @@ int main() {
     LOG_INFO("Entering main loop...");
     while (true) {
         canbus_task(); // Must run as often as possible
+        instruments_task();
 
         // Your looping code goes here
     }
