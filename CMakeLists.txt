@@ -55,6 +55,13 @@ pico_set_program_version(TEMPLATE_PICO "0.1")
 pico_enable_stdio_uart(TEMPLATE_PICO 0)
 pico_enable_stdio_usb(TEMPLATE_PICO 1)
 
+# Generate our custom Cyphal types
+cyphal_generate_types(
+    TARGET TEMPLATE_PICO
+    DSDL_DIR ${PROJECT_SOURCE_DIR}/external/leos-cyphal-types/leos
+    DSDL_LOOKUP_DIRS ${PROJECT_SOURCE_DIR}/external/leos-sdk/external/public_regulated_data_types/uavcan
+)
+
 # Add required template libraries
 target_link_libraries(TEMPLATE_PICO
         pico_stdlib

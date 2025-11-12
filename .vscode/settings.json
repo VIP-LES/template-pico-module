@@ -1,6 +1,4 @@
 {
-    "cmake.showSystemKits": false,
-    "cmake.options.statusBarVisibility": "hidden",
     "cmake.options.advanced": {
         "build": {
             "statusBarVisibility": "hidden"
